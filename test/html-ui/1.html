@@ -1,0 +1,121 @@
+﻿<!DOCTYPE html>
+<html>
+<link href="bootstrap.min.css" rel="stylesheet">
+<script src="fabric.js"></script>
+<body>
+<div class="container" style="margin-top:20px">
+   <div class="row">
+      <div class="col-md-6">
+        <div style="width:100%; height:384px; overflow:auto">
+            <canvas id="myCanvas1" width="512" height="384"  style="border:1px solid #d3d3d3;">
+                Your browser does not support the HTML5 canvas tag.
+            </canvas>
+        </div>
+        <input type="range" id="Range1" min="0.001" max="1.0" value="1.0" step="0.01" style="display: block;margin: 20px auto;">
+      </div>
+      <div class="col-md-6">
+        <div style="width:100%; height:384px; overflow:auto">
+            <canvas id="myCanvas2" width="512" height="384"  style="border:1px solid #d3d3d3;">
+                Your browser does not support the HTML5 canvas tag.
+            </canvas>
+        </div>
+        <input type="range" id="Range2" min="0.000001" max="1.0" value="1.0" step="0.01" style="display: block;margin: 20px auto;">
+        
+	</div>      
+   </div>
+</div>
+
+<script>
+const MAX_COL = 100;
+const MAX_ROW = 100;
+const WIDTH = 1024;
+const HEIGHT = 768;
+SCALE1 = 512/(WIDTH*MAX_COL);;
+SCALE2 = 512/WIDTH;
+
+var slider1 = document.getElementById("Range1");
+var slider2 = document.getElementById("Range2");
+slider1.value = SCALE1;
+slider2.value = SCALE2;
+
+
+var canvas1  = new fabric.Canvas('myCanvas1');
+var canvas2  = new fabric.Canvas('myCanvas2');
+canvas1.setZoom(SCALE1);
+canvas2.setZoom(SCALE2);
+
+slider1.onchange = function () {canvas1.setZoom(slider1.value);canvas1.setDimensions({width:WIDTH*MAX_COL*slider1.value,height:HEIGHT*MAX_ROW*slider1.value});}
+slider2.onchange = function () {canvas2.setZoom(slider2.value);update2();}
+
+var imgs2 = new Array(MAX_COL*MAX_ROW);
+for(var i =0 ;i<MAX_COL*MAX_ROW;i++){
+   
+    var img1 = new fabric.Image();
+    img1.row = Math.floor(i/MAX_COL);
+    img1.col = i%MAX_COL;
+    img1.setSrc((i%8+1)+".jpg", function(img) {
+        img.set({
+                left: img.col*WIDTH,
+                top: img.row*HEIGHT,
+                hasControls:false,
+                lockMovementX:true,
+                lockMovementY:true,
+                selectable:false
+            });
+         canvas1.add(img);
+    });
+    
+    var img2 = new fabric.Image();
+    img2.setSrc((i%8+1)+".jpg", function(img) {
+        img.set({
+                hasControls:false,
+                lockMovementX:true,
+                lockMovementY:true,
+                selectable:false
+            });            
+    });
+    imgs2[i] = img2;
+}
+
+var rect = new fabric.Rect({left:WIDTH/2,top:HEIGHT/2, width: WIDTH, height: HEIGHT, opacity: 0 });
+rect.on("modified",update2);
+rect.on("deselected",function(){canvas1.setActiveObject(rect);});
+canvas1.add(rect);
+canvas1.setActiveObject(rect);
+
+//rect.animate('borderColor', '+=100', { onChange: canvas1.renderAll.bind(canvas1) });
+
+
+function update2(){
+    
+    var startCol = rect.left/WIDTH;
+    var endCol = (rect.left+rect.width*rect.scaleX)/WIDTH;
+    var startRow = rect.top/HEIGHT;
+    var endRow = (rect.top+rect.height*rect.scaleY)/HEIGHT;
+
+    console.log("startCol:"+startCol+"  endCol:"+endCol+"  startRow:"+startRow+"  endRow:"+endRow+"\n");
+    
+    canvas2.setDimensions({width:rect.width*rect.scaleX*slider2.value,height:rect.height*rect.scaleY*slider2.value});
+    canvas2.clear();
+    var first_id = Math.floor(startCol)+Math.floor(startRow)*MAX_COL;
+    for(var col=Math.floor(startCol);col<Math.ceil(endCol);col++){
+        for(var row=Math.floor(startRow);row<Math.ceil(endRow);row++){
+            var id = col+row*MAX_COL;
+            var left = col>Math.floor(startCol)?(col-Math.floor(startCol)-1)*WIDTH+(WIDTH-imgs2[first_id].cropX): 0;
+            var top = row>Math.floor(startRow)?(row-Math.floor(startRow)-1)*HEIGHT+(HEIGHT-imgs2[first_id].cropY) : 0;
+            var cropX = col>Math.floor(startCol)? 0 : (startCol-col)*WIDTH;
+            var cropY = row>Math.floor(startRow)? 0 : (startRow-row)*HEIGHT;
+            var width = col==Math.floor(startCol)? WIDTH-cropX : (col == Math.floor(endCol)?(endCol-col)*WIDTH:WIDTH);
+            var height = row==Math.floor(startRow)? HEIGHT-cropY : (row == Math.floor(endRow)?(endRow-row)*HEIGHT:HEIGHT);
+            
+            canvas2.add(imgs2[id].set({left:left,top:top,cropX:cropX,cropY:cropY,width:width,height:height}));
+        
+        }
+    }
+
+}
+
+</script>
+
+</body>
+</html>
