@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html>
+
+<script src="fabric.js"></script>
+<body>
+	<canvas id="c1" width="11325" height="13475"  style="">
+                Your browser does not support the HTML5 canvas tag.
+	</canvas>
+<script>
+const BLOCK_COL_NUM = 32;//水平方向BLOCK数目
+const BLOCK_ROW_NUM = 44;//垂直方向BLOCK数目
+const BLOCK_WIDTH = 12000;//BLOCK图像宽度
+const BLOCK_HEIGHT = 5000;//BLOCK图像
+
+const OVERVIEW_FILE = "/jpgdata/TestTu-HasOffset.BMP";//缩略图文件
+const BLOCKS_DIR = "/jpgdata/JpegFile";//BLOCK文件
+
+var Cross = fabric.util.createClass(fabric.Object, {
+    objectCaching: false,
+    initialize: function(options) {
+      this.callSuper('initialize', options);
+      this.animDirection = 'up';
+
+      this.width = options&&options.width||100;
+      this.height = options&&options.height||100;
+
+      this.w1 = this.h2 = this.width;
+      this.h1 = this.w2 = 2;
+    },
+
+    animateWidthHeight: function() {
+      var interval = 2;
+
+      if (this.h2 >= 30 && this.h2 <= 100) {
+        var actualInterval = (this.animDirection === 'up' ? interval : -interval);
+        this.h2 += actualInterval;
+        this.w1 += actualInterval;
+      }
+
+      if (this.h2 >= 100) {
+        this.animDirection = 'down';
+        this.h2 -= interval;
+        this.w1 -= interval;
+      }
+      if (this.h2 <= 30) {
+        this.animDirection = 'up';
+        this.h2 += interval;
+        this.w1 += interval;
+      }
+    },
+
+    _render: function(ctx) {
+      ctx.fillRect(-this.w1 / 2, -this.h1 / 2, this.w1, this.h1);
+      ctx.fillRect(-this.w2 / 2, -this.h2 / 2, this.w2, this.h2);
+      ctx.fillStyle = '#4FC3F7';
+      //ctx.globalAlpha = 0.3;
+      ctx.beginPath();
+      ctx.arc(0,0,this.width/2,0,Math.PI * 2, false);
+      ctx.fill();
+
+    }
+  });
+
+var canvas  = new fabric.Canvas('c1',{
+	selectionLineWidth: 2,
+	fireRightClick: true,
+	stopContextMenu: true,
+});
+
+var cross = new Cross({ 
+	top: 100, 
+	left: 100,
+	fill:"blue",
+	hasControls: false,
+	hasBorders:false,
+	width:100,
+	height:100,
+	originX:"center",
+	originY:"center",
+	opacity:0.5
+	});
+canvas.add(cross);
+
+
+var group;
+var img1 = new fabric.Image();
+img1.setSrc(OVERVIEW_FILE, function(img) {
+	img.set({
+      left: 0,
+      top: 0,
+      hasControls:false,
+      lockMovementX:true,
+      lockMovementY:true,
+      selectable:false ,
+	});
+
+	canvas.setDimensions({width:img.width,height:img.height});
+	canvas.setBackgroundImage(img, canvas.renderAll.bind(canvas));
+	
+	
+	
+	window.onscroll = function(e){   
+		if(canvas.isUpdate)
+			return;
+		if(!canvas.mygroup)
+			return;
+
+		var top = document.documentElement.scrollTop || document.body.scrollTop;   
+		var left = document.documentElement.scrollLeft || document.body.scrollLeft;
+		canvas.mygroup.set({
+			left:left,
+			top:top,
+			});
+		canvas.mygroup.setCoords();
+
+		canvas.renderAll();
+		console.log('onscroll top='+top+" left="+left+"/n");
+	 
+	};  
+
+});
+
+var startPointer;
+canvas.on("mouse:down",function(opt){
+	if(opt.target == null && opt.button === 3){
+		cross.set({left:opt.pointer.x,top:opt.pointer.y});
+		cross.setCoords();
+		update({x:opt.pointer.x,y:opt.pointer.y});
+	}
+		
+	
+	console.log('Mousedown x='+opt.pointer.x+"y="+opt.pointer.y+"/n");
+	//startPointer = e.pointer;
+	//e.e.preventDefault();
+	
+})
+canvas.on("mouse:up",function(e){
+	console.log('Mouseup x='+e.pointer.x+"y="+e.pointer.y+"/n");
+	//update(e.pointer)
+})
+
+canvas.on("mouse:move",function(e){
+	console.log('Mouse move x='+e.pointer.x+"y="+e.pointer.y+"/n");
+
+})
+
+function objMove(e){
+	console.log('Object MOVE x='+e.pointer.x+"y="+e.pointer.y+"/n");
+	console.log('Object MOVE left='+e.target.left+"top="+e.target.top+"/n");
+	if(e.target == cross){
+		update({x:e.target.left,y:e.target.top});
+	}
+		
+}
+
+canvas.on("object:moving",objMove);
+
+
+var blocks = new Map();
+function update(p){
+	
+	canvas.off("object:moving");
+	p.x=p.x < 2?2:p.x;
+	p.y=p.y < 2?2:p.y;
+	
+	canvas.isUpdate = true;
+	var left1 = 0;
+	var top1 = 0;
+	if(canvas.mygroup){
+		canvas.remove(canvas.mygroup);
+		left1 = canvas.mygroup.left;
+		top1 = canvas.mygroup.top;
+	}
+		
+	
+	var objs = new Array();
+	var rect = new fabric.Rect({
+		left:0,
+		top:0, 
+		width: (BLOCK_COL_NUM*4/img1.width)*BLOCK_WIDTH+2, 
+		height: (BLOCK_ROW_NUM*4/img1.height)*BLOCK_HEIGHT+2, 
+		stroke: 'blue',
+		strokeWidth:2,
+		borderColor:"rgb(255,0,0)",
+	});
+	objs.push(rect);
+	
+	
+
+	//var imgs = new Array();
+	
+    var startCol = BLOCK_COL_NUM * (p.x-2)/img1.width;
+    var endCol = BLOCK_COL_NUM * (p.x+2)/img1.width;
+    var startRow = BLOCK_ROW_NUM * (p.y-2)/img1.height;
+    var endRow = BLOCK_ROW_NUM * (p.y+2)/img1.height;
+    //var zoom = Math.max(600/(BLOCK_WIDTH*(endCol-startCol)),400/(BLOCK_HEIGHT*(endRow-startRow)));
+    var num_total = (Math.ceil(endCol)-Math.floor(startCol))*(Math.ceil(endRow)-Math.floor(startRow));
+    
+    //console.log("startCol:"+startCol+"  endCol:"+endCol+"  startRow:"+startRow+"  endRow:"+endRow+"  zoom:"+zoom+"\n");
+
+    var cropX0 = null;
+    var cropY0 = null;
+    for(var col=Math.floor(startCol);col<Math.ceil(endCol);col++){
+        for(var row=Math.floor(startRow);row<Math.ceil(endRow);row++){
+        	
+    		var left = col>Math.floor(startCol)?(col-Math.floor(startCol)-1)*BLOCK_WIDTH+(BLOCK_WIDTH-cropX0): 0;
+            var top = row>Math.floor(startRow)?(row-Math.floor(startRow)-1)*BLOCK_HEIGHT+(BLOCK_HEIGHT-cropY0) : 0;
+            var cropX = col>Math.floor(startCol)? 0 : (startCol-col)*BLOCK_WIDTH;
+            var cropY = row>Math.floor(startRow)? 0 : (startRow-row)*BLOCK_HEIGHT;
+            var width = col==Math.floor(startCol)? (col == Math.floor(endCol)?(endCol-startCol)*BLOCK_WIDTH:BLOCK_WIDTH-cropX) : (col == Math.floor(endCol)?(endCol-col)*BLOCK_WIDTH:BLOCK_WIDTH);
+            var height = row==Math.floor(startRow)? (row == Math.floor(endRow)?(endRow-startRow)*BLOCK_HEIGHT:BLOCK_HEIGHT-cropY) : (row == Math.floor(endRow)?(endRow-row)*BLOCK_HEIGHT:BLOCK_HEIGHT) ;		
+
+            
+            if(cropX0 == null) cropX0 = cropX;
+            if(cropY0 == null) cropY0 = cropY;
+            
+            var opt = {
+            		hasControls:false,
+                    lockMovementX:true,
+                    lockMovementY:true,
+                    selectable:false,
+            		left: left+2,
+                    top: top+2,
+                    cropX: cropX,
+                    cropY: cropY,
+                    width: width,
+                    height: height,
+//                    originX: 'left',
+//                    originY: 'top'
+            }
+            
+            var img;
+            if(blocks.has('scan'+col+'_block'+row)){
+            	img = blocks.get('scan'+col+'_block'+row);
+            	img.set(opt);
+            	objs.push(img);
+            	//canvas.mygroup.add(img);
+            	if(objs.length == num_total+1){    
+            		canvas.mygroup = new fabric.Group(objs);
+                	canvas.add(canvas.mygroup);
+                	//canvas.renderAll();
+                	canvas.mygroup.set({
+                		//top:document.documentElement.scrollTop || document.body.scrollTop,
+                		//left:document.documentElement.scrollLeft || document.body.scrollLeft,
+                		hasRotatingPoint:false,
+                		left:left1,
+                		top:top1
+                		});
+                	canvas.mygroup.setCoords();
+                	console.log("top="+(document.documentElement.scrollTop || document.body.scrollTop)+" left="+(document.documentElement.scrollLeft || document.body.scrollLeft)+"\n")
+                	
+                	canvas.on("object:moving",objMove);
+                	
+                	canvas.isUpdate = false;
+                }
+            	
+            }else{
+            	img = new fabric.Image();
+            	img.opt = opt;
+            	img.setSrc(BLOCKS_DIR+"/AoiL_IP0_scan0_block"+row+".jpg", function(img) {
+                    img.set(img.opt);  
+                    objs.push(img);
+                    //canvas.mygroup.add(img)
+                    if(objs.length == num_total+1){
+                    	
+                    	canvas.mygroup = new fabric.Group(objs);
+                    	canvas.add(canvas.mygroup);
+                    	//canvas.renderAll();
+                    	canvas.mygroup.set({
+                    		//top:document.documentElement.scrollTop || document.body.scrollTop,
+                    		//left:document.documentElement.scrollLeft || document.body.scrollLeft,
+                    		 hasRotatingPoint:false,
+                    		left:left1,
+                    		top:top1
+                    		});
+                    	canvas.mygroup.setCoords();
+                    	console.log("top="+(document.documentElement.scrollTop || document.body.scrollTop)+" left="+(document.documentElement.scrollLeft || document.body.scrollLeft)+"\n")
+                    	
+                    	canvas.on("object:moving",objMove);
+                    	
+                    	canvas.isUpdate = false;
+                    	
+                    }
+            			
+                    
+                });
+            	blocks.set('scan'+col+'_block'+row,img);
+            }
+            
+            
+            console.log("col:"+col+"  row:"+row+"  left:"+left+"  top:"+top+"  cropX:"+cropX+"  cropY:"+cropY+"  width:"+width+"  height:"+height+"\n");
+            
+        }
+    }
+
+}
+
+</script>
+
+</body>
+</html>

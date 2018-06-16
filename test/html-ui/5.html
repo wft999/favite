@@ -23,24 +23,16 @@
       </div>
       <div class="col-md-6">
         <div style="width:100%; height:500px; overflow:auto">
-            <canvas id="myCanvas2" width="800" height="500"  style="border:1px solid #d3d3d3;">
+            <canvas id="myCanvas2" width="600" height="500"  style="border:1px solid #d3d3d3;">
                 Your browser does not support the HTML5 canvas tag.
             </canvas>
         </div>
-        <input type="range" id="Range2" min="0.001" max="1.0" value="1.0" step="0.0001" style="display: block;margin: 20px auto;">
         
 	</div>      
    </div>
 
 
 <script>
-
-function wheelHandler(e) {
-	document.getElementById("myCanvas2").scrollTop += e.deltaY;
-    e.preventDefault();
-}
-
-//document.getElementById("myCanvas2").addEventListener('wheel', wheelHandler);
 
 const BLOCK_COL_NUM = 32;//水平方向BLOCK数目
 const BLOCK_ROW_NUM = 44;//垂直方向BLOCK数目
@@ -53,17 +45,8 @@ const BLOCKS_DIR = "e:data/JpegFile";//BLOCK文件
 var slider1 = document.getElementById("Range1");
 var slider2 = document.getElementById("Range2");
 var canvas1  = new fabric.Canvas('myCanvas1');
-var canvas2  = new fabric.StaticCanvas('myCanvas2');
+var canvas2  = new fabric.Canvas('myCanvas2');
 
-slider2.onchange = function () {
-	var zoom = canvas2.getZoom();
-	var width = canvas2.getWidth();
-	var height = canvas2.getHeight();
-	canvas2.setZoom(slider2.value);
-	
-	canvas2.setDimensions({width:slider2.value*width/canvas2.zoom1,height:slider2.value*height/canvas2.zoom1});
-	canvas2.zoom1 = slider2.value;
-}
 
 var rect;
 var blocks = new Map();
@@ -86,7 +69,7 @@ img1.setSrc(OVERVIEW_FILE, function(img) {
     rect = new fabric.Rect({
     			left:0,
     			top:0, 
-    			width: 0.8*img.width/BLOCK_COL_NUM, 
+    			width: 2*img.width/BLOCK_COL_NUM, 
     			height: 2*img.height/BLOCK_ROW_NUM, 
     			opacity: 0.1,
     			cornerStyle: "circle",
@@ -115,20 +98,46 @@ img1.setSrc(OVERVIEW_FILE, function(img) {
     };
 });
 
+canvas2.on('mouse:wheel', function(opt) {
+	  var delta = opt.e.deltaY;
+	  var pointer = canvas2.getPointer(opt.e);
+	  var zoom = canvas2.getZoom();
+	  zoom = zoom + delta/10000;
+	  if (zoom > 1) zoom = 1;
+	  if (zoom < 0.001) zoom = 0.001;
+	  canvas2.zoomToPoint({ x: opt.e.offsetX, y: opt.e.offsetY }, zoom);
+	  opt.e.preventDefault();
+	  opt.e.stopPropagation();
+	});
+	    
+
 function update(){  
+	if(canvas2.mygroup)
+		canvas2.remove(canvas2.mygroup);
+	
+	var objs = new Array();
+	
     var startCol = BLOCK_COL_NUM * rect.left/img1.width;
     var endCol = BLOCK_COL_NUM * (rect.left+rect.width*rect.scaleX)/img1.width;
     var startRow = BLOCK_ROW_NUM * rect.top/img1.height;
     var endRow = BLOCK_ROW_NUM * (rect.top+rect.height*rect.scaleY)/img1.height;
     var zoom = Math.max(canvas2.getWidth()/(BLOCK_WIDTH*(endCol-startCol)),canvas2.getHeight()/(BLOCK_HEIGHT*(endRow-startRow)));
     
+    var num_total = (Math.ceil(endCol)-Math.floor(startCol))*(Math.ceil(endRow)-Math.floor(startRow));
   //  console.log("startCol:"+startCol+"  endCol:"+endCol+"  startRow:"+startRow+"  endRow:"+endRow+"  zoom:"+zoom+"\n");
+
 zoom=1;
-    slider2.value = zoom;
+	//canvas2.zoomToPoint({ x: 0, y: 0 }, zoom);
     canvas2.setZoom(zoom);
+//    canvas2.viewportTransform[0] = zoom;
+//    canvas2.viewportTransform[1] = 0;
+//    canvas2.viewportTransform[2] = 0;
+//    canvas2.viewportTransform[3] = zoom;
+ //   canvas2.viewportTransform[4] = 0;
+  //  canvas2.viewportTransform[5] = 0;
     canvas2.setDimensions({width:BLOCK_WIDTH*(endCol-startCol)*zoom,height:BLOCK_HEIGHT*(endRow-startRow)*zoom});
     canvas2.clear();
-    canvas2.zoom1 = zoom;
+    //canvas2.zoom1 = zoom;
     
     
     var cropX0 = null;
@@ -155,24 +164,47 @@ zoom=1;
                     height: Math.floor(height),
                     originX: 'left',
                     originY: 'top',
-                    objectCaching:false,
             }
             
             var img;
             if(blocks.has('scan'+col+'_block'+row)){
             	img = blocks.get('scan'+col+'_block'+row);
-            	//canvas2.remove(img);
-            	img.set(opt)//.scale(zoom);
-            	canvas2.add(img);
-            	//canvas2.setBackgroundImage(img, canvas2.renderAll.bind(canvas2));
+            	img.set(opt)
+            	objs.push(img);
+                if(objs.length == num_total){
+                	canvas2.mygroup = new fabric.Group(objs,{
+                		top:0,
+                		left:0,
+                		hasControls:false,
+                		});
+                	canvas2.add(canvas2.mygroup);
+                	/*canvas2.mygroup.set({
+                		top:0,
+                		left:0,
+                		hasControls:false,
+                		});
+                	canvas2.mygroup.setCoords();*/
+                }
             }else{
             	img = new fabric.Image();
             	img.opt = opt;
             	img.setSrc(BLOCKS_DIR+"/AoiL_IP0_scan0_block"+row+".jpg", function(img) {
                     img.set(img.opt)//.scale(zoom);  
-                    //img.set({width: canvas.width, height: canvas.height, originX: 'left', originY: 'top'});
-                    //canvas2.setBackgroundImage(img, canvas2.renderAll.bind(canvas2));
-                    canvas2.add(img);
+                    objs.push(img);
+                    if(objs.length == num_total){
+                    	canvas2.mygroup = new fabric.Group(objs,{
+                    		top:0,
+                    		left:0,
+                    		hasControls:false,
+                    		});
+                    	canvas2.add(canvas2.mygroup);
+                    	/*canvas2.mygroup.set({
+                    		top:0,
+                    		left:0,
+                    		hasControls:false,
+                    		});
+                    	canvas2.mygroup.setCoords();*/
+                    }
                     
                     
                 });

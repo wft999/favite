@@ -26,8 +26,8 @@
 </div>
 
 <script>
-const MAX_COL = 100;
-const MAX_ROW = 100;
+const MAX_COL = 4;
+const MAX_ROW = 4;
 const WIDTH = 1024;
 const HEIGHT = 768;
 SCALE1 = 512/(WIDTH*MAX_COL);;
@@ -60,9 +60,12 @@ for(var i =0 ;i<MAX_COL*MAX_ROW;i++){
                 hasControls:false,
                 lockMovementX:true,
                 lockMovementY:true,
-                selectable:false
+                selectable:false,
+                originX: 'left',
+                originY: 'top'
             });
          canvas1.add(img);
+        //canvas1.setBackgroundImage(img, canvas1.renderAll.bind(canvas1));
     });
     
     var img2 = new fabric.Image();
@@ -109,6 +112,8 @@ function update2(){
             var height = row==Math.floor(startRow)? HEIGHT-cropY : (row == Math.floor(endRow)?(endRow-row)*HEIGHT:HEIGHT);
             
             canvas2.add(imgs2[id].set({left:left,top:top,cropX:cropX,cropY:cropY,width:width,height:height}));
+            //imgs2[id].set({left:left,top:top,cropX:cropX,cropY:cropY,width:width,height:height});
+            //canvas2.setBackgroundImage(imgs2[id], canvas2.renderAll.bind(canvas2));
         
         }
     }

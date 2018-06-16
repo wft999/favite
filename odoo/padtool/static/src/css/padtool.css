@@ -1,0 +1,32 @@
+.panel-hawk .panel-body {
+  padding: 0px;
+}
+
+.panel-hawk  .panel-heading{
+  padding: 5px 15px;
+  cursor: move;
+  font-weight: bold;
+  color: #4c4c4c;
+}
+
+
+.panel-hawk > .panel-heading:hover, 
+.panel-hawk > .panel-heading:focus{
+  background-color: #7c7bad;
+  color: #fff;
+}
+
+.panel-hawk{
+  position: absolute;
+  margin:0px;
+}
+
+.panel-hawk .panel-body{
+  width:300px; 
+  height:300px; 
+  overflow:auto;
+}
+
+.map-status{
+	color: #fff;
+}

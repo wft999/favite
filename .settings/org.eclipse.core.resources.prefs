@@ -1,0 +1,10 @@
+eclipse.preferences.version=1
+encoding//odoo/padtool/__init__.py=utf-8
+encoding//odoo/padtool/__manifest__.py=utf-8
+encoding//odoo/padtool/controllers/__init__.py=utf-8
+encoding//odoo/padtool/controllers/controllers.py=utf-8
+encoding//odoo/padtool/models/__init__.py=utf-8
+encoding//odoo/padtool/models/ir_http.py=utf-8
+encoding//odoo/padtool/models/models.py=utf-8
+encoding//odoo/padtool/models/res_config_settings.py=utf-8
+encoding/<project>=UTF-8

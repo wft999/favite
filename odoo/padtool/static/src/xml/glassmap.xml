@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<templates xml:space="preserve">
+<t t-name="Glassmap">
+	<div class="canvas-map" style="width:1150px; height:100%; overflow:auto;">
+		<canvas id="map" width="800" height="600"  style="border:1px solid #d3d3d3;">
+                Your browser does not support the HTML5 canvas tag.
+		</canvas>
+	</div>
+	
+</t>
+
+<t t-name="Glassmap.Buttons">
+    <div class="btn-group glassmap-mode" role="group">
+		<button class="btn btn-default fa fa-mouse-pointer active" title="Select" data-mode="default"/>
+        <button class="btn btn-default fa  fa-search-plus" title="Zoom In" data-mode="zoom-in"/>
+		<button class="btn btn-default fa fa-search-minus" title="Zoom Out" data-mode="zoom-out"/>
+    </div>
+</t>
+
+<t t-name="Glassmap.status">
+	<li class="o_planner_systray">
+		<a><span class="map-status" align="right"></span></a>
+    </li>
+</t>
+
+</templates>    

@@ -1,0 +1,29 @@
+<odoo>
+    <template id="assets_backend" name="account assets" inherit_id="web.assets_backend">
+        <xpath expr="." position="inside">
+        	<link rel="stylesheet" type="text/css" href="/padtool/static/src/css/padtool.css"/>
+        	
+        	<script type="text/javascript" src="/padtool/static/lib/fabric/fabric.js"></script>
+
+			<script type="text/javascript" src="/padtool/static/src/js/canvas.js"></script>
+			<script type="text/javascript" src="/padtool/static/src/js/panelhawk.js"></script>
+            <script type="text/javascript" src="/padtool/static/src/js/panelmap.js"></script>
+            <script type="text/javascript" src="/padtool/static/src/js/glassmap.js"></script>
+
+            
+        </xpath>
+    </template>
+    
+    <template id="menu_secondary" name="menu_secondary" inherit_id="web.menu_secondary">
+        <xpath expr="//div[@class='o_sub_menu_footer']" position="replace">
+            
+        </xpath>
+    </template>
+    
+    <template id="layout" name="layout" inherit_id="web.layout">
+        <xpath expr="//title" position="replace">
+            <title>Pad Tool</title>
+        </xpath>
+    </template>
+    
+</odoo>

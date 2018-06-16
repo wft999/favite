@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<templates xml:space="preserve">
+
+<t t-name="Panelmap">
+	<div class="canvas-map" style="width:1150px; height:100%; overflow:auto;">
+		<canvas id="map" width="800" height="600"  style="border:1px solid #d3d3d3;">
+                Your browser does not support the HTML5 canvas tag.
+		</canvas>
+	</div>
+	
+</t>
+
+
+<t t-name="Panelhawk">
+	<div class="panel panel-default panel-hawk o_hidden">
+  		<div class="panel-heading">
+  			<span>Hawkeye</span>
+  		</div>
+  		<div  class="panel-body canvas-hawk">
+  			<canvas id="hawk" width="300" height="300">
+                Your browser does not support the HTML5 canvas tag.
+			</canvas>
+  		</div>
+    	
+	</div>
+</t>
+
+<t t-name="Panelmap.Buttons">
+	<div class="btn-group btn-group-md" role="group">
+        <button class="btn btn-default btn-sm dropdown-toggle" data-toggle="dropdown" aria-expanded="false">
+            Objects <span class="caret"/>
+        </button>
+        <ul class="dropdown-menu o_graph_measures_list">
+            <li><a href="#">Frame</a></li>
+            <li><a href="#">MainMark</a></li>
+            <li><a href="#">SubMark</a></li>
+            <li><a href="#">FilterArea</a></li>
+            <li><a href="#">InspectArea</a></li>
+            <li class="divider"></li>
+            <li data-field="__count__"><a href="#">Count</a></li>
+        </ul>
+    </div>
+    <div class="btn-group glassmap-mode" role="group">
+		<button class="btn btn-default fa fa-mouse-pointer active" title="Select" data-mode="default"/>
+        <button class="btn btn-default fa  fa-search-plus" title="Zoom In" data-mode="zoom-in"/>
+		<button class="btn btn-default fa fa-search-minus" title="Zoom Out" data-mode="zoom-out"/>
+    </div>
+	<div class="btn-group"  role="group">
+		<button class="btn btn-default fa fa-save" title="Save" data-mode="select"/>
+		<button class="btn btn-default fa fa-repeat" title="Redo" data-mode="select"/>
+		<button class="btn btn-default fa fa-undo" title="Undo" data-mode="select"/>
+        <button class="btn btn-default fa fa-copy" title="Copy" data-mode="zoom_in"/>
+	</div>
+
+    <div class="btn-group" role="group">
+        <button class="btn btn-default fa fa-plus-circle" title="Bar Chart" data-mode="bar"/>
+        <button class="btn btn-default fa fa-minus-circle" title="Line Chart" data-mode="line"/>
+        <button class="btn btn-default fa fa-pie-chart" title="Pie Chart" data-mode="pie"/>
+    </div>
+
+</t>
+<t t-name="Panelmap.status">
+    <span class="map-status" align="right"></span>
+</t>
+</templates>    

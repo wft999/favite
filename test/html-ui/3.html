@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html>
+
+<script src="fabric.js"></script>
+<body>
+	<canvas id="c1" width="11325" height="13475"  style="">
+                Your browser does not support the HTML5 canvas tag.
+	</canvas>
+<script>
+const BLOCK_COL_NUM = 32;//水平方向BLOCK数目
+const BLOCK_ROW_NUM = 44;//垂直方向BLOCK数目
+const BLOCK_WIDTH = 12000;//BLOCK图像宽度
+const BLOCK_HEIGHT = 5000;//BLOCK图像
+
+const OVERVIEW_FILE = "file:///E:/data/TestTu-HasOffset.BMP";//缩略图文件
+const BLOCKS_DIR = "file:///E:/data/JpegFile";//BLOCK文件
+
+var Cross = fabric.util.createClass(fabric.Object, {
+    objectCaching: false,
+    initialize: function(options) {
+      this.callSuper('initialize', options);
+      this.animDirection = 'up';
+      //this.hasBorders = false;
+      this.hasControls  = false;
+      this.fill = 'yellow';
+
+      this.width = 100;
+      this.height = 100;
+
+      this.w1 = this.h2 = 100;
+      this.h1 = this.w2 = 2;
+    },
+
+    animateWidthHeight: function() {
+      var interval = 2;
+
+      if (this.h2 >= 30 && this.h2 <= 100) {
+        var actualInterval = (this.animDirection === 'up' ? interval : -interval);
+        this.h2 += actualInterval;
+        this.w1 += actualInterval;
+      }
+
+      if (this.h2 >= 100) {
+        this.animDirection = 'down';
+        this.h2 -= interval;
+        this.w1 -= interval;
+      }
+      if (this.h2 <= 30) {
+        this.animDirection = 'up';
+        this.h2 += interval;
+        this.w1 += interval;
+      }
+    },
+
+    _render: function(ctx) {
+      ctx.fillRect(-this.w1 / 2, -this.h1 / 2, this.w1, this.h1);
+      ctx.fillRect(-this.w2 / 2, -this.h2 / 2, this.w2, this.h2);
+    }
+  });
+
+var canvas  = new fabric.Canvas('c1',{
+	selectionLineWidth: 2
+});
+
+var line1 = new fabric.Polyline([
+		{ x: 0, y: 0 },
+    	{ x: 0, y: 3000 }
+	], {
+		stroke: 'red',
+		left: 2,
+	  	top: 0,
+	});
+var line2 = new fabric.Polyline([
+		{ x: 0, y: 0 },
+    	{ x: 3000, y: 0 },
+	], {
+		stroke: 'red',
+  		left: 0,
+  		top: 2,
+	});
+
+//canvas.add(line1);
+//canvas.add(line2);
+
+canvas.add(new Cross({ top: 0, left: 0 }));
+
+var group;
+var img1 = new fabric.Image();
+img1.setSrc(OVERVIEW_FILE, function(img) {
+	img.set({
+      left: 0,
+      top: 0,
+      hasControls:false,
+      lockMovementX:true,
+      lockMovementY:true,
+      selectable:false ,
+	});
+
+	canvas.setDimensions({width:img.width,height:img.height});
+	canvas.setBackgroundImage(img, canvas.renderAll.bind(canvas));
+	
+	
+	/*
+	window.onscroll = function(e){   
+		if(canvas.isUpdate)
+			return;
+
+		var top = document.documentElement.scrollTop || document.body.scrollTop;   
+		var left = document.documentElement.scrollLeft || document.body.scrollLeft;
+		canvas.mygroup.set({
+			left:left,
+			top:top,
+			});
+
+		canvas.renderAll();
+		console.log('onscroll top='+top+" left="+left+"/n");
+	 
+	};  */
+
+});
+
+var startPointer;
+img1.on("mouse:down",function(e){
+	console.log('mousedown x='+e.pointer.x+"y="+e.pointer.y+"/n");
+	startPointer = e.pointer;
+	img1.off("mouse:move");
+	e.e.preventDefault();
+	
+})
+canvas.on("mouse:up",function(e){
+	console.log('mouseup x='+e.pointer.x+"y="+e.pointer.y+"/n");
+	//update(e.pointer)
+})
+
+function mouseMove(e){
+	img1.off("mouse:move");
+	console.log('mouseMOVE x='+e.pointer.x+"y="+e.pointer.y+"/n");
+	line1.set({left:e.pointer.x,top:0})
+	line2.set({left:0,top:e.pointer.y})
+	//update(e.pointer);
+	canvas.renderAll();
+}
+
+img1.on("mouse:move",mouseMove);
+
+
+
+
+var blocks = new Map();
+function update(p){
+	
+	if(p.x < 2 || p.y < 2){
+		canvas.on("mouse:move",mouseMove);
+		return;
+	}
+	
+	canvas.isUpdate = true;
+	if(canvas.mygroup)
+		canvas.remove(canvas.mygroup);
+	
+	var objs = new Array();
+	var rect = new fabric.Rect({
+		left:0,
+		top:0, 
+		width: (BLOCK_COL_NUM*4/img1.width)*BLOCK_WIDTH+2, 
+		height: (BLOCK_ROW_NUM*4/img1.height)*BLOCK_HEIGHT+2, 
+		stroke: 'blue',
+		strokeWidth:2,
+		borderColor:"rgb(255,0,0)",
+	});
+	objs.push(rect);
+	
+	
+
+	//var imgs = new Array();
+	
+    var startCol = BLOCK_COL_NUM * (p.x-2)/img1.width;
+    var endCol = BLOCK_COL_NUM * (p.x+2)/img1.width;
+    var startRow = BLOCK_ROW_NUM * (p.y-2)/img1.height;
+    var endRow = BLOCK_ROW_NUM * (p.y+2)/img1.height;
+    //var zoom = Math.max(600/(BLOCK_WIDTH*(endCol-startCol)),400/(BLOCK_HEIGHT*(endRow-startRow)));
+    var num_total = (Math.ceil(endCol)-Math.floor(startCol))*(Math.ceil(endRow)-Math.floor(startRow));
+    
+    //console.log("startCol:"+startCol+"  endCol:"+endCol+"  startRow:"+startRow+"  endRow:"+endRow+"  zoom:"+zoom+"\n");
+
+    var cropX0 = null;
+    var cropY0 = null;
+    for(var col=Math.floor(startCol);col<Math.ceil(endCol);col++){
+        for(var row=Math.floor(startRow);row<Math.ceil(endRow);row++){
+        	
+    		var left = col>Math.floor(startCol)?(col-Math.floor(startCol)-1)*BLOCK_WIDTH+(BLOCK_WIDTH-cropX0): 0;
+            var top = row>Math.floor(startRow)?(row-Math.floor(startRow)-1)*BLOCK_HEIGHT+(BLOCK_HEIGHT-cropY0) : 0;
+            var cropX = col>Math.floor(startCol)? 0 : (startCol-col)*BLOCK_WIDTH;
+            var cropY = row>Math.floor(startRow)? 0 : (startRow-row)*BLOCK_HEIGHT;
+            var width = col==Math.floor(startCol)? (col == Math.floor(endCol)?(endCol-startCol)*BLOCK_WIDTH:BLOCK_WIDTH-cropX) : (col == Math.floor(endCol)?(endCol-col)*BLOCK_WIDTH:BLOCK_WIDTH);
+            var height = row==Math.floor(startRow)? (row == Math.floor(endRow)?(endRow-startRow)*BLOCK_HEIGHT:BLOCK_HEIGHT-cropY) : (row == Math.floor(endRow)?(endRow-row)*BLOCK_HEIGHT:BLOCK_HEIGHT) ;		
+
+            
+            if(cropX0 == null) cropX0 = cropX;
+            if(cropY0 == null) cropY0 = cropY;
+            
+            var opt = {
+            		hasControls:false,
+                    lockMovementX:true,
+                    lockMovementY:true,
+                    selectable:false,
+            		left: left+2,
+                    top: top+2,
+                    cropX: cropX,
+                    cropY: cropY,
+                    width: width,
+                    height: height,
+//                    originX: 'left',
+//                    originY: 'top'
+            }
+            
+            var img;
+            if(blocks.has('scan'+col+'_block'+row)){
+            	img = blocks.get('scan'+col+'_block'+row);
+            	img.set(opt);
+            	objs.push(img);
+            	//canvas.mygroup.add(img);
+            	if(objs.length == num_total+1){    
+            		canvas.mygroup = new fabric.Group(objs);
+                	canvas.add(canvas.mygroup);
+                	//canvas.renderAll();
+                	canvas.mygroup.set({
+                		top:document.documentElement.scrollTop || document.body.scrollTop,
+                		left:document.documentElement.scrollLeft || document.body.scrollLeft,
+                		});
+                	console.log("top="+(document.documentElement.scrollTop || document.body.scrollTop)+" left="+(document.documentElement.scrollLeft || document.body.scrollLeft)+"\n")
+                	
+                	canvas.on("mouse:move",mouseMove);
+                	
+                	canvas.isUpdate = false;
+                }
+            	
+            }else{
+            	img = new fabric.Image();
+            	img.opt = opt;
+            	img.setSrc(BLOCKS_DIR+"/AoiL_IP0_scan0_block"+row+".jpg", function(img) {
+                    img.set(img.opt);  
+                    objs.push(img);
+                    //canvas.mygroup.add(img)
+                    if(objs.length == num_total+1){
+                    	
+                    	canvas.mygroup = new fabric.Group(objs);
+                    	canvas.add(canvas.mygroup);
+                    	//canvas.renderAll();
+                    	canvas.mygroup.set({
+                    		top:document.documentElement.scrollTop || document.body.scrollTop,
+                    		left:document.documentElement.scrollLeft || document.body.scrollLeft,
+                    		});
+                    	console.log("top="+(document.documentElement.scrollTop || document.body.scrollTop)+" left="+(document.documentElement.scrollLeft || document.body.scrollLeft)+"\n")
+                    	
+                    	canvas.on("mouse:move",mouseMove);
+                    	
+                    	canvas.isUpdate = false;
+                    	
+                    }
+            			
+                    
+                });
+            	blocks.set('scan'+col+'_block'+row,img);
+            }
+            
+            
+            console.log("col:"+col+"  row:"+row+"  left:"+left+"  top:"+top+"  cropX:"+cropX+"  cropY:"+cropY+"  width:"+width+"  height:"+height+"\n");
+            
+        }
+    }
+
+}
+
+</script>
+
+</body>
+</html>

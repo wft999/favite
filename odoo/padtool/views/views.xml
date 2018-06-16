@@ -1,0 +1,66 @@
+<odoo>
+  <data>
+    <!-- explicit list view definition -->
+    
+    <record model="ir.ui.view" id="pad_parameter_view">
+      <field name="name">Pad Parameter</field>
+      <field name="model">padtool.pad</field>
+      <field name="arch" type="xml">
+        <form create="0"  string="Module" title="wft">
+        	<sheet>
+            	<div class="oe_title">
+                	<h1>Pad Parameter</h1>
+                </div>
+                <div class="oe_clear"/>
+                <group>
+                	<group>
+                		<field name="display_name" />
+                    	<field name="PanelCenter" />
+                        <field name="GolbalToleranceRegular" />
+                    	<field name="GolbalToleranceUnregular"/>
+                	</group>
+                	<group>
+                    	<field name="GolbalIndentRegular"/>
+                    	<field name="GolbalIndentUnregular"/>
+                    	<field name="GlassToGlassMode"/>
+                   		<field name="NeglectInspIfNoMarkResult"/>
+                 	</group>
+               	</group>
+        	</sheet>
+      	</form>
+      </field>
+    </record>
+
+
+    <!-- actions opening views on models -->
+    <record model="ir.actions.act_window" id="padtool.action_pad_parameter_window">
+      <field name="name">Pad Parameter</field>
+      <field name="res_model">padtool.pad</field>
+      <field name="view_mode">form</field>
+      <field name="target">main</field>
+    </record>
+	<record model="ir.actions.client" id="padtool.action_glassmap">
+      <field name="name">Glass Map</field>
+      <field name="tag">padtool.glassmap</field>
+      <field name="target">current</field>
+    </record>
+    <record model="ir.actions.client" id="padtool.action_panelmap">
+      <field name="name">Panel Map</field>
+      <field name="tag">padtool.panelmap</field>
+      <field name="target">current</field>
+    </record>
+    
+
+
+    <!-- Top menu item -->
+    <menuitem name="Pad Tool" id="padtool.menu_root"/>
+    <!-- menu categories -->
+    <menuitem name="Glass Data" id="padtool.menu_glass_root" parent="padtool.menu_root" sequence="101"/>
+    
+    <!-- actions -->
+
+
+    
+    
+  </data>
+</odoo>
