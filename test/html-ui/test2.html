@@ -1,0 +1,116 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<title>js div浮动层拖拽效果代码 - 站长素材</title>
+<script src="fabric.js"></script>
+
+</head>
+<body>
+
+<div id="box">
+    <canvas id="c" width="800" height="600"  style="border:1px solid #d3d3d3;">
+                Your browser does not support the HTML5 canvas tag.
+		</canvas>
+</div>
+<script type="text/javascript">
+(function() {
+	  var canvas = this.__canvas = new fabric.Canvas('c', { selection: false });
+	  fabric.Object.prototype.originX = fabric.Object.prototype.originY = 'center';
+	  
+	  var points = new Array();
+
+	  function makeCircle(left, top, id) {
+	    var c = new fabric.Circle({
+	      left: left,
+	      top: top,
+	      strokeWidth: 1,
+	      radius: 6,
+	      //fill: '#fff',
+	      stroke: '#666'
+	    });
+	    c.hasControls = c.hasBorders = false;
+
+	    c.id = id;
+
+	    return c;
+	  }
+
+	  function makeLine(coords) {
+	    return new fabric.Line(coords, {
+	      fill: 'red',
+	      stroke: 'red',
+	      strokeWidth: 1,
+	      selectable: false
+	    });
+	  }  
+
+	  var startPoints = [
+		  { x: 10, y: 10 },
+		    { x: 50, y: 30 },
+		    { x: 40, y: 70 },
+		    { x: 60, y: 50 },
+		    { x: 100, y: 150 },
+		    { x: 40, y: 100 }
+		  ];
+
+	  var polygon = new fabric.Polygon(startPoints, {
+		    fill:false,
+		    stroke: 'red',
+		    originX:"left",
+			originY:"top",
+		  });
+		  canvas.add(polygon);
+		
+		  for(var i = 0; i< polygon.points.length;i++){
+			  var cir = makeCircle(polygon.points[i].x, polygon.points[i].y, i);
+			  polygon.points[i].cir = cir;
+			  canvas.add(cir);	
+		  }
+		  			  
+
+	  canvas.on('object:moving', function(e) {
+		  //g.ungroupOnCanvas();
+	    var p = e.target;
+	    console.log("start")
+	    if(p.id){
+	    	polygon.points[p.id].x = p.left;
+			polygon.points[p.id].y = p.top;
+			/*var calcDim = polygon._calcDimensions();
+
+			polygon.left = calcDim.left;
+
+
+			polygon.top = calcDim.top;
+
+			polygon.width = calcDim.width;
+			polygon.height = calcDim.height;
+			polygon.pathOffset = {
+		        x: calcDim.left + polygon.width / 2,
+		        y: calcDim.top + polygon.height / 2
+		      };*/
+			polygon.dirty = true;	
+			polygon.setCoords();
+	    }else if(p == polygon){
+	    	for(var i = 0; i< polygon.points.length;i++){
+				  polygon.points[i].cir.set({left:polygon.points[i].x+polygon.left,top:polygon.points[i].y+polygon.top})
+				  polygon.points[i].cir.setCoords();
+				  //polygon.points[i].x += polygon.left;
+				  //polygon.points[i].y+=polygon.top;
+			  }
+	    	//polygon.top = 0;
+	    	//polygon.left = 0;
+	    	polygon.dirty = true;	
+			polygon.setCoords();
+	    }
+	
+		
+	    canvas.renderAll();
+
+	  });
+	  
+
+	})();
+</script>
+</body>
+</html>

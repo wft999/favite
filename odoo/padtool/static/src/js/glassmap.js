@@ -44,8 +44,11 @@ var Glassmap = Widget.extend(ControlPanelMixin,{
             	var parts = res.split('/');
         		if(parts.length == 4)
         			self.imgFile = ('/glassdata/'+parts[2] +'/Glass.bmp');
-        		else
-        			self.imgFile = ('/glassdata/'+parts[2] +'/'+ parts[3]+'/'+ parts[3]+'.bmp')
+        		else{
+        			self.imgFile = ('/glassdata/'+parts[2] +'/'+ parts[3]+'/'+ parts[3]+'.bmp');
+        			self.padFile = ('/glassdata/'+parts[2] +'/'+ parts[3]+'/'+ parts[3]+'.json')
+        		}
+        			
             });
     },
 
@@ -68,7 +71,7 @@ var Glassmap = Widget.extend(ControlPanelMixin,{
     //--------------------------------------------------------------------------
     // Private
     //--------------------------------------------------------------------------
-    _onSelectMode:function(e){
+    _onButtonSelectMode:function(e){
     	this.map.hoverCursor = e.currentTarget.dataset.mode;
     	$('.glassmap-mode button').removeClass('active');
     	$(e.currentTarget).addClass('active');
@@ -77,9 +80,9 @@ var Glassmap = Widget.extend(ControlPanelMixin,{
     _renderButtons: function () {
     	this.$buttons = $(QWeb.render('Glassmap.Buttons'));
     	this.$switch_buttons = $(QWeb.render('Glassmap.status'));
-    	this.$buttons.on('click', '.fa-mouse-pointer',this._onSelectMode.bind(this) );
-    	this.$buttons.on('click', '.fa-search-plus',this._onSelectMode.bind(this) );
-    	this.$buttons.on('click', '.fa-search-minus',this._onSelectMode.bind(this) );
+    	this.$buttons.on('click', '.fa-mouse-pointer',this._onButtonSelectMode.bind(this) );
+    	this.$buttons.on('click', '.fa-search-plus',this._onButtonSelectMode.bind(this) );
+    	this.$buttons.on('click', '.fa-search-minus',this._onButtonSelectMode.bind(this) );
      },
     _updateControlPanel: function () {    			
     	this.update_control_panel({
@@ -93,7 +96,7 @@ var Glassmap = Widget.extend(ControlPanelMixin,{
 	},
 	
 	_onMouseMove:function(opt){
-		var zoom = this.image.scaleX;
+		var zoom = this.map.getZoom();
 		var x = opt.e.offsetX;
 		var y = opt.e.offsetY;
 		$(".map-status").text("image(x:"+Math.round(x/zoom)+",y:"+Math.round(y/zoom)+") window(x:"+x+",y:"+y+")")
@@ -104,25 +107,27 @@ var Glassmap = Widget.extend(ControlPanelMixin,{
 	_onMouseUp:function(opt){
 		var delta = 0;
 		if(this.map.hoverCursor == 'zoom-in')
-			delta = 0.1;
+			delta = 0.2;
 		else if(this.map.hoverCursor == 'zoom-out')
-			delta = -0.1;
+			delta = -0.2;
 		else
 			return;
 		
-		var zoom = this.image.scaleX;//this.canvas.getZoom();
+		var zoom = this.map.getZoom();//this.image.scaleX;
 		var x = opt.e.offsetX / zoom;
 		var y = opt.e.offsetY / zoom;
 		
 		zoom = zoom + delta;
-		if (zoom > 5) zoom = 5;
+		zoom = Math.floor(zoom*10)/10;
+		if (zoom > 1) zoom = 1;
 		if (zoom <= this.minZoom) zoom = this.minZoom;
 		
 		x = x * zoom - (opt.e.offsetX -this.$el.scrollLeft());
 		y = y * zoom - (opt.e.offsetY-this.$el.scrollTop());
 		
+		this.map.setZoom(zoom);
 		this.map.setDimensions({width:this.image.width*zoom,height:this.image.height*zoom});
-		this.image.scale(zoom);
+		//this.image.scale(zoom);
 		
 		opt.e.preventDefault();
 		opt.e.stopPropagation();
@@ -133,13 +138,14 @@ var Glassmap = Widget.extend(ControlPanelMixin,{
 	
 	_onLoadImage(img){
 		img.set({left: 0,top: 0,hasControls:false,lockMovementX:true,lockMovementY:true,selectable:false });
-		this.map  = new fabric.Canvas('map',{hoverCursor:'default'});
+		this.map  = new fabric.Canvas('map',{hoverCursor:'default',stopContextMenu:true});
 		var zoom = Math.max(this.map.getWidth()/img.width,this.map.getHeight()/img.height);
 		zoom = Math.floor(zoom*10)/10;
 		this.minZoom = zoom;
-		//this.canvas.setZoom(zoom);
+		this.map.setZoom(zoom);
 		this.map.setDimensions({width:img.width*zoom,height:img.height*zoom});
-		this.map.add(img.scale(zoom));
+		//this.map.setBackgroundImage(img);
+		this.map.add(img);
 		
 		this.map.on('mouse:move', this._onMouseMove.bind(this));    		
 		this.map.on('mouse:out', this._onMouseOut.bind(this));

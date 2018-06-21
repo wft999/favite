@@ -30,3 +30,15 @@
 .map-status{
 	color: #fff;
 }
+
+.o_pad_object_list li.selected > a:before {
+    font-family: FontAwesome;
+    position: absolute;
+    left: 6px;
+    content: "\f00c";
+}
+
+.o_pad_object_list  li.selected > a {
+    color: #333333; 
+    font-weight: bold; 
+}

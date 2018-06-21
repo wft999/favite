@@ -3,161 +3,121 @@
 <head>
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
 <title>js div浮动层拖拽效果代码 - 站长素材</title>
+<script src="fabric.js"></script>
 
-<style type="text/css">
-div,h2,p{margin:0;padding:0;}
-body{font:14px/1.5 arial;}
-#box{width:400px;height:200px;background:#fef4eb;padding:5px;margin:50px;border:1px solid #f60;}
-#box .title{height:25px;background:#f60;}
-#tool{margin-bottom:10px;}
-</style>
-<script type="text/javascript">
-function Drag()
-{
-    //初始化
-    this.initialize.apply(this, arguments)
-}
-Drag.prototype = {
-    //初始化
-    initialize : function (drag, options)
-    {
-        this.drag = this.$(drag);
-        this._x = this._y = 0;
-        this._moveDrag = this.bind(this, this.moveDrag);
-        this._stopDrag = this.bind(this, this.stopDrag);
-        
-        this.setOptions(options);
-        
-        this.handle = this.$(this.options.handle);
-//        this.maxContainer = this.$(this.options.maxContainer);
-        
- //       this.maxTop = Math.max(this.maxContainer.clientHeight, this.maxContainer.scrollHeight) - this.drag.offsetHeight;
- //       this.maxLeft = Math.max(this.maxContainer.clientWidth, this.maxContainer.scrollWidth) - this.drag.offsetWidth;
-        
- //       this.limit = this.options.limit;
- //       this.lockX = this.options.lockX;
- //       this.lockY = this.options.lockY;
- //       this.lock = this.options.lock;
-        
- //       this.onStart = this.options.onStart;
-  //      this.onMove = this.options.onMove;
-  //      this.onStop = this.options.onStop;
-        
-        this.handle.style.cursor = "move";
-        
-        this.changeLayout();
-        
-        this.addHandler(this.handle, "mousedown", this.bind(this, this.startDrag))
-    },
-    changeLayout : function ()
-    {
-        this.drag.style.top = this.drag.offsetTop + "px";
-        this.drag.style.left = this.drag.offsetLeft + "px";
-        this.drag.style.position = "absolute";
-        this.drag.style.margin = "0"
-    },
-    startDrag : function (event)
-    {        
-        var event = event || window.event;
-        
-        this._x = event.clientX - this.drag.offsetLeft;
-        this._y = event.clientY - this.drag.offsetTop;
-        
-        this.addHandler(document, "mousemove", this._moveDrag);
-        this.addHandler(document, "mouseup", this._stopDrag);
-        
-        event.preventDefault && event.preventDefault();
-        this.handle.setCapture && this.handle.setCapture();
-        
-//        this.onStart()
-    },
-    moveDrag : function (event)
-    {
-        var event = event || window.event;
-        
-        var iTop = event.clientY - this._y;
-        var iLeft = event.clientX - this._x;
-        
- //       if (this.lock) return;
-        
- //       this.limit && (iTop < 0 && (iTop = 0), iLeft < 0 && (iLeft = 0), iTop > this.maxTop && (iTop = this.maxTop), iLeft > this.maxLeft && (iLeft = this.maxLeft));
-        
-        this.lockY || (this.drag.style.top = iTop + "px");
-        this.lockX || (this.drag.style.left = iLeft + "px");
-        
-        event.preventDefault && event.preventDefault();
-        
- //       this.onMove()
-    },
-    stopDrag : function ()
-    {
-        this.removeHandler(document, "mousemove", this._moveDrag);
-        this.removeHandler(document, "mouseup", this._stopDrag);
-        
-        this.handle.releaseCapture && this.handle.releaseCapture();
-        
- //       this.onStop()
-    },
-    //参数设置
-    setOptions : function (options)
-    {
-        this.options =
-        {
-            handle:            this.drag, //事件对象
-            limit:            true, //锁定范围
- //           lock:            false, //锁定位置
-//            lockX:            false, //锁定水平位置
-//            lockY:            false, //锁定垂直位置
- //           maxContainer:    document.documentElement || document.body, //指定限制容器
-//            onStart:        function () {}, //开始时回调函数
-//            onMove:            function () {}, //拖拽时回调函数
-//            onStop:            function () {}  //停止时回调函数
-        };
-        for (var p in options) this.options[p] = options[p]
-    },
-    //获取id
-    $ : function (id)
-    {
-        return typeof id === "string" ? document.getElementById(id) : id
-    },
-    //添加绑定事件
-    addHandler : function (oElement, sEventType, fnHandler)
-    {
-        return oElement.addEventListener ? oElement.addEventListener(sEventType, fnHandler, false) : oElement.attachEvent("on" + sEventType, fnHandler)
-    },
-    //删除绑定事件
-    removeHandler : function (oElement, sEventType, fnHandler)
-    {
-        return oElement.removeEventListener ? oElement.removeEventListener(sEventType, fnHandler, false) : oElement.detachEvent("on" + sEventType, fnHandler)
-    },
-    //绑定事件到对象
-    bind : function (object, fnHandler)
-    {
-        return function ()
-        {
-            return fnHandler.apply(object, arguments)    
-        }
-    }
-};
-
-
-
-
-
-//应用
-window.onload = function ()
-{
-    var oBox = document.getElementById("box");    
-    var oTitle = oBox.getElementsByTagName("h2")[0];
-    var oDrag = new Drag(oBox, {handle:oTitle, limit:false});
-};
-</script>
 </head>
 <body>
 
 <div id="box">
-    <h2 class="title"></h2>
+    <canvas id="c" width="800" height="600"  style="border:1px solid #d3d3d3;">
+                Your browser does not support the HTML5 canvas tag.
+		</canvas>
 </div>
+<script type="text/javascript">
+(function() {
+	  var canvas = this.__canvas = new fabric.Canvas('c', { selection: true });
+	  //fabric.Object.prototype.originX = fabric.Object.prototype.originY = 'center';
+	  
+	  var points = new Array();
 
+	  function makeCircle(left, top, line1, line2) {
+	    var c = new fabric.Circle({
+	      left: left,
+	      top: top,
+	      strokeWidth: 1,
+	      radius: 6,
+	      //fill: '#fff',
+	      stroke: '#666',
+	      originX:'center',
+	      originY:'center'
+	    });
+	    c.hasControls = c.hasBorders = false;
+//	    c.selectable= true;
+
+	    c.line1 = line1;
+	    c.line2 = line2;
+
+	    return c;
+	  }
+
+	  function makeLine(coords) {
+	    return new fabric.Line(coords, {
+	      fill: 'red',
+	      stroke: 'red',
+	      strokeWidth: 1,
+	      selectable: true
+	    });
+	  }
+
+	  var line1 = makeLine([ 250, 125, 250, 175 ]),
+	      line2 = makeLine([ 250, 175, 250, 250 ]),
+	      line3 = makeLine([ 250, 250, 300, 350]),
+	      line4 = makeLine([ 300, 350, 200, 350]),
+	      line5 = makeLine([ 200, 350, 175, 225 ]),
+	      line6 = makeLine([ 175, 225, 250, 125 ]);
+		//var g = new fabric.Group([line1, line2, line3, line4, line5, line6,])
+		//canvas.add(g);
+	  canvas.add(line1, line2, line3, line4, line5, line6);
+
+	  canvas.add(
+			  makeCircle(line1.get('x2'), line1.get('y2'), line1, line2),
+			   makeCircle(line2.get('x2'), line2.get('y2'), line2, line3),
+			    makeCircle(line3.get('x2'), line3.get('y2'), line3,line4),
+			    makeCircle(line4.get('x2'), line4.get('y2'), line4,line5),
+			    makeCircle(line5.get('x2'), line5.get('y2'), line5,line6),
+			    makeCircle(line6.get('x2'), line6.get('y2'), line6,line1)
+	    
+	  );
+	  
+	  canvas.on('object:moved', function(e) {
+		  var p = e.target;
+	  });
+
+	  canvas.on('object:moving', function(e) {
+		  //g.ungroupOnCanvas();
+	    var p = e.target;
+	    if(p.line1 && p.line2){
+	    	console.log("start")
+		    console.log("line1.x2:"+line1.x2+" line1.y2:"+line1.y2)
+		    console.log("line2.x1:"+line2.x1+" line2.y1:"+line2.y1)
+		    console.log("p.left:"+p.left+" p.top:"+p.top)
+//		    p.line1.x1 += p.line1.left;
+//	    	p.line1.y1 += p.line1.top;
+		    p.line1 && p.line1.set({ 'x2': p.left, 'y2': p.top });
+//		    p.line1.left = 0;
+//		    p.line1.top = 0;
+		    
+//		    p.line2.x2 += p.line2.left;
+//		    p.line2.y2 += p.line2.top;
+		    p.line2 && p.line2.set({ 'x1': p.left, 'y1': p.top });
+//		    p.line2.left = 0;
+//		    p.line2.top = 0;
+		    
+		    p.line1.setCoords();
+		    p.line2.setCoords();
+
+		    
+		    console.log("end")
+		    console.log("line1.x2:"+line1.x2+" line1.y2:"+line1.y2)
+		    console.log("line2.x1:"+line2.x1+" line2.y1:"+line2.y1)
+	    }
+	    
+	    canvas.renderAll();
+
+	  });
+	  
+/*	  canvas.on('mouse:over', function(e) {
+		    e.target.set('fill', 'red');
+		    canvas.renderAll();
+		  });
+
+		  canvas.on('mouse:out', function(e) {
+		    e.target.set('fill', 'green');
+		    canvas.renderAll();
+		  });*/
+	  
+
+	})();
+</script>
 </body>
 </html>

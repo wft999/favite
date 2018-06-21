@@ -3,7 +3,7 @@
 from odoo import models, fields, api
 from odoo.http import request
 import odoo
-
+import json
 class Pad(models.TransientModel):
     _name = 'padtool.pad'
     
@@ -23,6 +23,14 @@ class Pad(models.TransientModel):
         m = Menu.browse(menu_id)
 
         return m.complete_name
+    
+    @api.model
+    def save_map(self,padFile,pad):
+        root = odoo.tools.config['glass_root_path'] 
+        padFile = padFile.replace('/glassdata',root)
+        with open(padFile, 'w') as f:
+            str = json.dumps(pad, separators=(',', ':'))
+            f.write(str)
 
 
 class Bif(models.Model):
