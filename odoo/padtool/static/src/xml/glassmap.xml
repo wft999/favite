@@ -18,9 +18,9 @@
     </div>
 </t>
 
-<t t-name="Glassmap.status">
+<t t-name="Glassmap.info">
 	<li class="o_planner_systray">
-		<a><span class="map-status" align="right"></span></a>
+		<a><span class="map-info" align="right"></span></a>
     </li>
 </t>
 

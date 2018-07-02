@@ -6,32 +6,26 @@ from odoo import api, fields, models
 
 class ResConfigSettings(models.TransientModel):
     _inherit = 'res.config.settings'
-
-    test_procurement_jit = fields.Selection([
-        (1, 'Immediately after sales order confirmation'),
-        (0, 'Manually or based on automatic scheduler')
-        ], "Reservation",
-        help="Reserving products manually in delivery orders or by running the scheduler is advised to better manage priorities in case of long customer lead times or/and frequent stock-outs.")
     
-    test_product_expiry = fields.Boolean("Expiration Dates",
-        help="Track following dates on lots & serial numbers: best before, removal, end of life, alert. \n Such dates are set automatically at lot/serial number creation based on values set on the product (in days).")
+    hawk_width = fields.Integer( string="Hwakeye window width",default=500,help="Gives the sequence of this line when displaying the invoice.")
+    hawk_height = fields.Integer( string="Hwakeye window height",default=500,help="Gives the sequence of this line when displaying the invoice.")
+    
+    region_width = fields.Integer( string="Region width",default=500,help="Gives the sequence of this line when displaying the invoice.")
+    region_height = fields.Integer( string="Region height",default=500,help="Gives the sequence of this line when displaying the invoice.")
+    region_overlap = fields.Integer( string="Region overlap",default=50,help="Gives the sequence of this line when displaying the invoice.")
 
-    use_test_minimum_delta = fields.Boolean(
-        string="No Rescheduling Propagation",
-        help="Rescheduling applies to any chain of operations (e.g. Make To Order, Pick Pack Ship). In the case of MTO sales, a vendor delay (updated incoming date) impacts the expected delivery date to the customer. \n This option allows to not propagate the rescheduling if the change is not critical.")
-
-    test_minimum_delta = fields.Integer( string="No Rescheduling Propagation")
-
-    @api.onchange('use_test_minimum_delta')
-    def _onchange_use_test_minimum_delta(self):
-        if not self.use_test_minimum_delta:
-            self.test_minimum_delta = 1
 
     @api.model
     def get_values(self):
         res = super(ResConfigSettings, self).get_values()
         res.update(
-            use_test_minimum_delta=self.env['ir.config_parameter'].sudo().get_param('padtool.use_test_minimum_delta')
+            
+            hawk_width=int(self.env['ir.config_parameter'].sudo().get_param('padtool.hawk_width',500)),
+            hawk_height=int(self.env['ir.config_parameter'].sudo().get_param('padtool.hawk_height',500)),
+            region_width=int(self.env['ir.config_parameter'].sudo().get_param('padtool.region_width',500)),
+            region_height=int(self.env['ir.config_parameter'].sudo().get_param('padtool.region_height',500)),
+            region_overlap=int(self.env['ir.config_parameter'].sudo().get_param('padtool.region_overlap',50)),
+            
         )
         return res
 
@@ -40,9 +34,11 @@ class ResConfigSettings(models.TransientModel):
         super(ResConfigSettings, self).set_values()
         if not self.user_has_groups('padtool.group_pad_manager'):
             return
-        self.env['ir.config_parameter'].sudo().set_param('padtool.use_test_minimum_delta', self.use_test_minimum_delta)
-        """ If we are not in multiple locations, we can deactivate the internal
-        operation types of the warehouses, so they won't appear in the dashboard.
-        Otherwise, activate them.
-        """
+        
+        self.env['ir.config_parameter'].sudo().set_param('padtool.hawk_width', self.hawk_width)
+        self.env['ir.config_parameter'].sudo().set_param('padtool.hawk_height', self.hawk_height)
+        self.env['ir.config_parameter'].sudo().set_param('padtool.region_width', self.region_width)
+        self.env['ir.config_parameter'].sudo().set_param('padtool.region_height', self.region_height)
+        self.env['ir.config_parameter'].sudo().set_param('padtool.region_overlap', self.region_overlap)
+
         

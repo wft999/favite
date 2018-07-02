@@ -27,7 +27,6 @@
         # 'security/ir.model.access.csv',
         'views/views.xml',
         'views/templates.xml',
-        'data/bif_data.xml',
         'security/pad_security.xml',
         'views/res_config_settings_views.xml',
         'views/help.xml'

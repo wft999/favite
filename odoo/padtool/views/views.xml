@@ -6,7 +6,7 @@
       <field name="name">Pad Parameter</field>
       <field name="model">padtool.pad</field>
       <field name="arch" type="xml">
-        <form create="0"  string="Module" title="wft">
+        <form create="0"  string="Module" title="Pad Parameter">
         	<sheet>
             	<div class="oe_title">
                 	<h1>Pad Parameter</h1>

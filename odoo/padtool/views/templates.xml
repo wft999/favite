@@ -20,9 +20,15 @@
         </xpath>
     </template>
     
-    <template id="layout" name="layout" inherit_id="web.layout">
+   <template id="layout" name="layout" inherit_id="web.layout">
         <xpath expr="//title" position="replace">
-            <title>Pad Tool</title>
+            <title>Favite Tools</title>
+        </xpath>
+    </template>
+    
+    <template id="layout2" name="layout2" inherit_id="web.login_layout">
+        <xpath expr="//a[@href='https://www.odoo.com']" position="replace">
+            <a href="http://www.favite.com" target="_blank">Powered by <span>Favite</span></a>
         </xpath>
     </template>
     

@@ -32,33 +32,37 @@
             Objects <span class="caret"/>
         </button>
         <ul class="dropdown-menu o_pad_object_list">
-            <li class="selected"><a href="#">Frame</a></li>
-            <li><a href="#">MainMark</a></li>
-            <li><a href="#">SubMark</a></li>
-            <li><a href="#">UninspectZone</a></li>
-            <li><a href="#">InspectZone</a></li>
+            <li class="selected"><a href="#">frame</a></li>
+            <li><a href="#">mainMark</a></li>
+            <li><a href="#">subMark</a></li>
+            <li><a href="#">uninspectZone</a></li>
+            <li><a href="#">inspectZone</a></li>
             <li class="divider"></li>
-            <li data-field="__count__"><a href="#">Count</a></li>
+            <li><a href="#">Export</a></li>
         </ul>
     </div>
-    <div class="btn-group btn-group-md glassmap-mode" role="group">
+    <div class="btn-group btn-group-md" role="group">
 		<button class="btn btn-default fa fa-eye" title="Hawkeye" data-mode="hawkeye"/>
     </div>
     <div class="btn-group btn-group-md glassmap-mode" role="group">
 		<button class="btn btn-default fa fa-mouse-pointer active" title="Select" data-mode="default"/>
         <button class="btn btn-default fa  fa-search-plus" title="Zoom In" data-mode="zoom-in"/>
 		<button class="btn btn-default fa fa-search-minus" title="Zoom Out" data-mode="zoom-out"/>
-		<button class="btn btn-default fa fa-pencil-square-o o_hidden" title="Draw" data-mode="crosshair"/>
+		<button class="btn btn-default fa fa-edit" title="Draw" data-mode="crosshair"/>
+		<button class="btn btn-default fa fa-paste" title="Paste" data-mode="paste"/>
     </div>
     
     
 	<div class="btn-group btn-group-md"  role="group">
 		<button class="btn btn-default fa fa-save" title="Save" data-mode="select"/>
-		<button class="btn btn-default fa fa-repeat" title="Redo" data-mode="select"/>
-		<button class="btn btn-default fa fa-undo" title="Undo" data-mode="select"/>
-        <button class="btn btn-default fa fa-copy" title="Copy" data-mode="zoom_in"/>
-        <button class="btn btn-default fa fa-trash" title="Delete" data-mode="zoom_in"/>
-        <button class="btn btn-default fa fa-cut" title="Cut" data-mode="zoom_in"/>
+        <button class="btn btn-default fa fa-copy" title="Copy" data-mode="copy"/>
+        <button class="btn btn-default fa fa-cut" title="Delete Point" data-mode="zoom_in"/>
+        <button class="btn btn-default fa fa-trash" title="Delete Object" data-mode="zoom_in"/>
+	</div>
+	<div class="btn-group btn-group-md"  role="group">
+		<button class="btn btn-default fa fa-align-justify" title="GOA" data-mode="GOA"/>
+		<button class="btn btn-default fa fa-repeat o_hidden" title="Redo" data-mode="select"/>
+		<button class="btn btn-default fa fa-undo o_hidden" title="Undo" data-mode="select"/>
 	</div>
 
 

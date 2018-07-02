@@ -8,10 +8,20 @@ var session = require('web.session');
 var ControlPanelMixin = require('web.ControlPanelMixin');
 var web_client = require('web.web_client');
 var SystrayMenu = require('web.SystrayMenu');
+var NotificationManager = require('web.notification').NotificationManager;
+var WebClient = require('web.WebClient');
 
 var QWeb = core.qweb;
 var _t = core._t;
 
+var CanvasInfo = Widget.extend({
+    template: 'Glassmap.info',
+    
+    init: function (parent, value) {
+        this._super(parent);
+
+    },
+});
 
 var Glassmap = Widget.extend(ControlPanelMixin,{
     template: 'Glassmap',
@@ -40,8 +50,9 @@ var Glassmap = Widget.extend(ControlPanelMixin,{
         var self = this;
         return this._rpc({model: 'padtool.pad',method: 'get_information',args: [this.menu_id],})
             .then(function(res) {
-            	self.path = res;
-            	var parts = res.split('/');
+            	self.config = res.config;
+            	self.path = res.menu;
+            	var parts = res.menu.split('/');
         		if(parts.length == 4)
         			self.imgFile = ('/glassdata/'+parts[2] +'/Glass.bmp');
         		else{
@@ -52,7 +63,7 @@ var Glassmap = Widget.extend(ControlPanelMixin,{
             });
     },
 
-    start: function(){
+    start: function(){    	
     	var self = this;
     	this._renderButtons();
     	this._updateControlPanel();
@@ -61,6 +72,9 @@ var Glassmap = Widget.extend(ControlPanelMixin,{
        	console.log('_loadImage start');
     	this.image = new fabric.Image();
     	this.image.setSrc(this.imgFile, this._onLoadImage.bind(this));
+
+    	this.notification_manager = new NotificationManager(this);
+        return this.notification_manager.appendTo(this.$el);
     },
 
     do_show: function () {
@@ -79,7 +93,7 @@ var Glassmap = Widget.extend(ControlPanelMixin,{
     },
     _renderButtons: function () {
     	this.$buttons = $(QWeb.render('Glassmap.Buttons'));
-    	this.$switch_buttons = $(QWeb.render('Glassmap.status'));
+    	//this.$switch_buttons = $(QWeb.render('Glassmap.info'));
     	this.$buttons.on('click', '.fa-mouse-pointer',this._onButtonSelectMode.bind(this) );
     	this.$buttons.on('click', '.fa-search-plus',this._onButtonSelectMode.bind(this) );
     	this.$buttons.on('click', '.fa-search-minus',this._onButtonSelectMode.bind(this) );
@@ -94,17 +108,31 @@ var Glassmap = Widget.extend(ControlPanelMixin,{
             },
     	});
 	},
-	
+	_onMouseDown:function(opt){
+    	this.map._isMousedown = true;
+    	this.map.startPointer = opt.pointer;
+    },
 	_onMouseMove:function(opt){
+		
 		var zoom = this.map.getZoom();
 		var x = opt.e.offsetX;
 		var y = opt.e.offsetY;
-		$(".map-status").text("image(x:"+Math.round(x/zoom)+",y:"+Math.round(y/zoom)+") window(x:"+x+",y:"+y+")")
+		$(".map-info").text("image(x:"+Math.round(x/zoom)+",y:"+Math.round(y/zoom)+") window(x:"+x+",y:"+y+")");
+		
+    	if(this.map._isMousedown && (this.map.startPointer.x != opt.pointer.x ||this.map.startPointer.y != opt.pointer.y)){
+    		this.map._isDrawRect = true;
+    	}
+    		
 	},
 	_onMouseOut:function(opt){
 		$(".map-status").text("");
 	},
 	_onMouseUp:function(opt){
+		if(this.map._isDrawRect){
+			this.map._isDrawRect = false;
+			return;
+		}
+		
 		var delta = 0;
 		if(this.map.hoverCursor == 'zoom-in')
 			delta = 0.2;
@@ -147,9 +175,10 @@ var Glassmap = Widget.extend(ControlPanelMixin,{
 		//this.map.setBackgroundImage(img);
 		this.map.add(img);
 		
-		this.map.on('mouse:move', this._onMouseMove.bind(this));    		
+		this.map.on('mouse:move',this._onMouseMove.bind(this));    		
 		this.map.on('mouse:out', this._onMouseOut.bind(this));
 		this.map.on('mouse:up', this._onMouseUp.bind(this));
+		this.map.on('mouse:down',this._onMouseDown.bind(this));
 		
 		console.log('_loadImage end');
 		this.defImage.resolve();
@@ -169,17 +198,7 @@ var Glassmap = Widget.extend(ControlPanelMixin,{
     
 });
 
-var CanvasStatus = Widget.extend({
-    template: 'Glassmap.status',
-    
-    init: function (parent, value) {
-        this._super(parent);
-
-    },
-});
-
-SystrayMenu.Items.push(CanvasStatus);
-
+//SystrayMenu.Items.push(CanvasInfo);
 core.action_registry.add('padtool.glassmap', Glassmap);
 
 
