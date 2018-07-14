@@ -16,7 +16,7 @@
     # Categories can be used to filter modules in modules listing
     # Check https://github.com/odoo/odoo/blob/master/odoo/addons/base/module/module_data.xml
     # for the full list
-    'category': 'Specific Industry Applications',
+    'category': 'Favite Tools',
     'version': '0.1',
 
     # any module necessary for this one to work correctly
@@ -25,19 +25,18 @@
     # always loaded
     'data': [
         # 'security/ir.model.access.csv',
+        'data/favite_data.xml',
         'views/views.xml',
         'views/templates.xml',
         'security/pad_security.xml',
         'views/res_config_settings_views.xml',
-        'views/help.xml'
     ],
     # only loaded in demonstration mode
     'demo': [
         'demo/demo.xml',
     ],
     'qweb': [
-        "static/src/xml/glassmap.xml",
-        "static/src/xml/panelmap.xml",
+        "static/src/xml/map.xml",
     ],
     'installable': True,
     'auto_install': True,

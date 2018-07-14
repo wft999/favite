@@ -5,10 +5,14 @@
         	
         	<script type="text/javascript" src="/padtool/static/lib/fabric/fabric.js"></script>
 
+			<script type="text/javascript" src="/padtool/static/src/js/patching.js"></script>
+			<script type="text/javascript" src="/padtool/static/src/js/coordinate.js"></script>
 			<script type="text/javascript" src="/padtool/static/src/js/canvas.js"></script>
-			<script type="text/javascript" src="/padtool/static/src/js/panelhawk.js"></script>
+			<script type="text/javascript" src="/padtool/static/src/js/map.js"></script>
+			<script type="text/javascript" src="/padtool/static/src/js/hawkmap.js"></script>
             <script type="text/javascript" src="/padtool/static/src/js/panelmap.js"></script>
             <script type="text/javascript" src="/padtool/static/src/js/glassmap.js"></script>
+            
 
             
         </xpath>

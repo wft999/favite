@@ -7,6 +7,14 @@ import json
 import os
 import math
 from PIL import Image
+try:
+    import configparser as ConfigParser
+except ImportError:
+    import ConfigParser
+import logging   
+
+
+_logger = logging.getLogger(__name__) 
 
 class Pad(models.TransientModel):
     _name = 'padtool.pad'
@@ -23,17 +31,77 @@ class Pad(models.TransientModel):
 
     @api.model
     def get_information(self,menu_id):
-        config = request.env['res.config.settings'].get_values();
-        Menu = request.env['ir.ui.menu']
-        m = Menu.browse(menu_id)
+        menu = request.env['ir.ui.menu'].browse(menu_id)
+        parts=[c for c in menu.complete_name.split('/') if c]
+        
+        _logger.info('cur menu:%s', menu.complete_name)
+        
+        root = odoo.tools.config['glass_root_path']   
+        padFile = root + '/' + parts[2] + "/PadToolConfig.ini"
+        if not os.path.isfile(padFile):
+            raise Exception("File(%s) doesn't exist" % padFile)
+    
+        padConf = ConfigParser.ConfigParser()
+        try:
+            padConf.read(padFile)
+        except Exception as e:
+            raise e
+        
+        bifFile = root + '/' + parts[2]  +'/' + padConf['GLASS_INFORMATION']['BIF_FILE']
+        if not os.path.isfile(padFile):
+            raise Exception("File(%s) doesn't exist" % bifFile)
+        
+        bifConf = ConfigParser.RawConfigParser()
+        with open(bifFile, 'r') as f:
+            bifConf.read_string("[DEFAULT]\r\n" + f.read())
+        
+        cameraFile = root + '/' + parts[2]  +'/' + padConf['GLASS_INFORMATION']['CAMERA_FILE']
+        if not os.path.isfile(padFile):
+            raise Exception("File(%s) doesn't exist" % cameraFile)
+        
+        cameraConf = ConfigParser.RawConfigParser()
+        with open(cameraFile, 'r') as f:
+            cameraConf.read_string("[DEFAULT]\r\n" + f.read())
+            
+        globalConf = request.env['res.config.settings'].get_values();
+        
+        glassName = parts[2]
+        panelSacle = None
+        ipImagePath = '/glassdata/'+glassName + '/JpegFile'
+        if len(parts) == 4 and parts[3] == 'GlassMap':
+            imgFile = '/glassdata/'+glassName +'/' + padConf['GLASS_INFORMATION']['GLASS_MAP']
+            return {
+                "cameraConf":cameraConf._sections,
+                "bifConf":bifConf._defaults,
+                "padConf":padConf._sections,
+                "globalConf":globalConf,
+                "glassName":glassName,
+                "imgFile":imgFile,
+                "ipImagePath":ipImagePath
+                }
+        else:
+            panelName = parts[3]
+            imgFile = '/glassdata/'+ glassName +'/'+ panelName +'/' + padConf[panelName]['PANEL_MAP']
+            padFile = ('/glassdata/'+glassName +'/'+ panelName +'/'+ panelName+'.json')  
+            return {
+                "cameraConf":cameraConf._sections,
+                "bifConf":bifConf._defaults,
+                "padConf":padConf._sections,
+                "glassName":glassName,
+                "panelName":panelName,
+                "globalConf":globalConf,
+                "imgFile":imgFile,
+                "padFile":padFile,
+                "ipImagePath":ipImagePath
+                }
 
-        return {"menu":m.complete_name,"config":config}
+
+        
+        
     
     @api.model
     def save_map(self,padFile,pads):
-        #root = odoo.tools.config['glass_root_path'] 
-        config = request.env['res.config.settings'].get_values();
-        root = config.glass_root_path;
+        root = odoo.tools.config['glass_root_path'] 
         
         padFile = padFile.replace('/glassdata',root)
         with open(padFile, 'w') as f:
@@ -48,7 +116,7 @@ class Pad(models.TransientModel):
         if len(pads):
             with Image.open(imgFile) as im:
                 for obj in pads:
-                    if obj['padType'] != 'mainMark':
+                    if obj['padType'] != 'mainMark' or len(obj['points']) != 2:
                         continue
                     left = min(obj['points'][0]['x'],obj['points'][1]['x'])
                     right = max(obj['points'][0]['x'],obj['points'][1]['x'])

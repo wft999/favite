@@ -1,8 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <templates xml:space="preserve">
-
-<t t-name="Panelmap">
+<t t-name="Map">
 	<div class="canvas-map" style="width:1150px; height:100%; overflow:auto;">
 		<canvas id="map" width="800" height="600"  style="border:1px solid #d3d3d3;">
                 Your browser does not support the HTML5 canvas tag.
@@ -11,19 +10,18 @@
 	
 </t>
 
+<t t-name="Glassmap.Buttons">
+    <div class="btn-group glassmap-mode" role="group">
+		<button class="btn btn-default fa fa-mouse-pointer active" title="Select" data-mode="default"/>
+        <button class="btn btn-default fa  fa-search-plus" title="Zoom In" data-mode="zoom-in"/>
+		<button class="btn btn-default fa fa-search-minus" title="Zoom Out" data-mode="zoom-out"/>
+    </div>
+</t>
 
-<t t-name="Panelhawk">
-	<div class="panel panel-default panel-hawk o_hidden">
-  		<div class="panel-heading">
-  			<span>Hawkeye</span>
-  		</div>
-  		<div  class="panel-body canvas-hawk">
-  			<canvas id="hawk" width="300" height="300">
-                Your browser does not support the HTML5 canvas tag.
-			</canvas>
-  		</div>
-    	
-	</div>
+<t t-name="Map.info">
+	<li class="o_planner_systray">
+		<a><span class="map-info" align="right"></span></a>
+    </li>
 </t>
 
 <t t-name="Panelmap.Buttons">
@@ -64,10 +62,20 @@
 		<button class="btn btn-default fa fa-repeat o_hidden" title="Redo" data-mode="select"/>
 		<button class="btn btn-default fa fa-undo o_hidden" title="Undo" data-mode="select"/>
 	</div>
-
-
 </t>
-<t t-name="Panelmap.status">
-    <span class="map-status" align="right"></span>
+
+<t t-name="Hawkmap">
+	<div class="panel panel-default panel-hawk o_hidden">
+  		<div class="panel-heading">
+  			<span>Hawkeye</span>
+  		</div>
+  		<div  class="canvas-map panel-body">
+  			<canvas id="hawk" width="400" height="400">
+                Your browser does not support the HTML5 canvas tag.
+			</canvas>
+  		</div>
+    	
+	</div>
 </t>
+
 </templates>    

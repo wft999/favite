@@ -1,5 +1,12 @@
+.panel-hawk{
+  position: absolute;
+  margin:0px;
+  z-index:100;
+}
+
 .panel-hawk .panel-body {
   padding: 0px;
+  overflow:auto;
 }
 
 .panel-hawk  .panel-heading{
@@ -14,17 +21,6 @@
 .panel-hawk > .panel-heading:focus{
   background-color: #7c7bad;
   color: #fff;
-}
-
-.panel-hawk{
-  position: absolute;
-  margin:0px;
-}
-
-.panel-hawk .panel-body{
-  width:300px; 
-  height:300px; 
-  overflow:auto;
 }
 
 .map-info{

@@ -1,23 +1,22 @@
 odoo.define('padtool.Panelmap', function (require) {
 "use strict";
 
-var core = require('web.core');
-var framework = require('web.framework');
-var Widget = require('web.Widget');
-var session = require('web.session');
-var Dialog = require('web.Dialog');
+var NotificationManager = require('web.notification').NotificationManager;
 var ControlPanelMixin = require('web.ControlPanelMixin');
-var web_client = require('web.web_client');
-var Glassmap = require('padtool.Glassmap');
+var core = require('web.core');
+var Dialog = require('web.Dialog');
+
+var Map = require('padtool.Map');
 var Mycanvas = require('padtool.Canvas');
-var Panelhawk = require('padtool.Panelhawk');
+var Hawkmap = require('padtool.Hawkmap');
+var Coordinate = require('padtool.coordinate');
 
 var QWeb = core.qweb;
 var _t = core._t;
 
 
-var Panelmap = Glassmap.extend({
-    template: 'Panelmap',
+var Panelmap = Map.Map.extend(ControlPanelMixin,{
+    template: 'Map',
 /*    
     events: {
         'click .o_setup_company': 'on_setup_company'
@@ -35,27 +34,38 @@ var Panelmap = Glassmap.extend({
         return this._super.apply(this, arguments);
     },
     
+    willStart: function () {
+        var self = this;
+        return this._rpc({model: 'padtool.pad',method: 'get_information',args: [this.menu_id],})
+            .then(function(res) {
+            	_.extend(self,res);
+            	self.coordinate = new Coordinate(res.cameraConf,res.bifConf,res.padConf,res.panelName);
+            });
+    },
+    
     start: function(){
-    	var self = this;
-    	
     	this._super.apply(this, arguments);
-    	$.when(self.defImage).then(function ( ) {
+    	
+    	this._renderButtons();
+    	this._updateControlPanel();
+    	
+    	this.notification_manager = new NotificationManager(this);
+        this.notification_manager.appendTo(this.$el);
+    	
+        var self = this;
+    	$.when(self.defImage).then(function ( ) { 	
+    		self.coordinate.pmpPanelMapPara.iPanelMapWidth = self.image.width;
+    		self.coordinate.pmpPanelMapPara.iPanelMapHeight = self.image.height;
     		
     		self._loadPad();
     		self._drawHawk();
     		self._showToolbar();
-    		setTimeout(self._animate.bind(self), 500);
-    		
-    		self.map.on('object:moving',self._onObjectMove.bind(self));
-    		self.map.on('object:moving',self._onObjectMove.bind(self));
-    		
     		$('.breadcrumb').append('<li>frame</li>')
-
-    		console.log('panel map start');
+    		
     	});
     },
     
-    destroy: function(){
+    destroy: function(){	
     	if(this.pad.isModified){
     		var self = this;
     		var su = self._super;
@@ -69,126 +79,28 @@ var Panelmap = Glassmap.extend({
     		this._super.apply(this, arguments);
     	}
     	
-    	this.hawk&&this.hawk.destroy();
+    	this.hawkmap&&this.hawkmap.destroy();
     },
 
     do_show: function () {
-    	return this._super.apply(this, arguments);
+        this._super.apply(this, arguments);
+        this._updateControlPanel();
         
     },
   //--------------------------------------------------------------------------
     // Private
     //--------------------------------------------------------------------------
-    _animate: function () {
-    	var objs = this.map.getActiveObjects();
-		if(objs.length && objs[0].animateColor){
-			objs[0].animateColor();
-			objs[0].dirty = true;
-			this.map.renderAll();
-		}
-        
-        setTimeout(this._animate.bind(this), 500);
-      },
-      
-    _onObjectMove: function(opt){
-    	if(this.map.hoverCursor !== 'default')
-    		return;
-    	
-    	if(opt.target.mouseMove){
-    		opt.target.mouseMove();
-    		this.pad.isModified = true;
-    		if(opt.target.padType == 'frame')
-    			var innerFrame = opt.target.inner?opt.target.inner[0].polyline:opt.target.polyline;
-    		    var outerFrame = opt.target.outer?opt.target.outer[0].polyline:opt.target.polyline;
-    		
-    			this._drawRegion(innerFrame,outerFrame);
-    	}
-	    this.map.renderAll();
-    },
 
-    _onMouseUp:function(opt){
-    	this._super.apply(this, arguments);
-    	
-    	var zoom = this.map.getZoom();
-    	var endPointer = opt.pointer;
-    	if(this.map.hoverCursor == 'paste'){
-    		
-    		if(this.pad.pasteObj && this.pad.pasteObj.padType == this.pad.curType){
-    			var offsetX = endPointer.x/zoom - this.pad.pasteObj.left;
-        		var offsetY = endPointer.y/zoom - this.pad.pasteObj.top;
-        		var points = this.pad.pasteObj.polyline.points;
-        		
-        		var polyline = new Mycanvas.MyPolyline(this.map,this.pad.curType);
-        		for(var i = 0; i < points.length; i++){
-        			polyline.addPoint({
-        				x: points[i].x + offsetX,
-        				y: points[i].y + offsetY,
-        			});
-        		}
-        		this.pad.objs.push(polyline);
-        		
-        		var goa = this.pad.pasteObj.polyline.goa;
-        		if(goa){
-        			polyline.goa = new Mycanvas.Goa({
-     	    			left:goa.left + offsetX,
-     	    			top:goa.top + offsetY,
-     	    			padType:this.pad.curType,
-     	    			polyline:polyline,
-     	    			scaleX:goa.scaleX,
-    					scaleY:goa.scaleY,
-    					angle:goa.angle,
-    					visible:true
-     	    		}); 
-     	        	this.map.add(polyline.goa);
-        		}
-        		
-        		this.pad.isModified = true;
-    		}	
-    	}else if(this.map.hoverCursor == 'crosshair'){
-    		if(this.map._isDrawRect){
-    			this.map.discardActiveObject();
-    			var rect = new Mycanvas.MyPolyline(this.map,this.pad.curType);
-        		rect.addPoint({
-        				x:Math.min(this.map.startPointer.x/zoom,endPointer.x/zoom), 
-        				y: Math.max(this.map.startPointer.y/zoom,endPointer.y/zoom)
-        			})
-        		rect.addPoint({
-        				x:Math.max(this.map.startPointer.x/zoom,endPointer.x/zoom),
-        				y:Math.min(this.map.startPointer.y/zoom,endPointer.y/zoom)
-        			});
-        		this.curPolyline = null;
-        		this.pad.objs.push(rect);
-        		this.pad.isModified = true;
-        		
-        		//this.$buttons.find('.fa-mouse-pointer').click();
-    		}else if(this.pad.curType=='inspectZone' || this.pad.curType=='uninspectZone'){
-    			if(!this.curPolyline){
-    				this.curPolyline = new Mycanvas.MyPolyline(this.map,this.pad.curType);
-    				this.pad.objs.push(this.curPolyline);
-    				this.pad.isModified = true;
-    			}
-    				
-        		if(!this.curPolyline.addPoint({x: endPointer.x/zoom, y: endPointer.y/zoom})){
-        			this.notification_manager.notify(_t('Incorrect Operation'),_t('Please enter valid point!'),false);
-        		}
-        			
-    		}
-    		
-		}else if(this.map.hoverCursor == 'default' && this.map._isDrawRect){
-			var objs = this.map.getActiveObjects();
-			if(objs.length){
-				this.map.discardActiveObject();
-				this.map.setActiveObject(objs[0]);
-			}
-		}
-    			
-    	this.map._isMousedown = false;
-    	this.map._isDrawRect = false;
-    },
     _onButtonSelectMode:function(e){
     	var self = this;
-    	this._super.apply(this, arguments);
-    	this.hawk.map.hoverCursor = this.map.hoverCursor;
+    	
+    	this.map.hoverCursor = e.currentTarget.dataset.mode;
+    	$('.glassmap-mode button').removeClass('active');
+    	$(e.currentTarget).addClass('active');
+    	
+    	if(this.hawkmap.map)
+    		this.hawkmap.map.hoverCursor = this.map.hoverCursor;
+    	
     	if(this.map.hoverCursor == 'default'){
     		this.map.forEachObject(function(obj){
     			if((obj.type == 'cross' || obj.type == 'goa') && obj.padType == self.pad.curType){
@@ -226,6 +138,7 @@ var Panelmap = Glassmap.extend({
     	this.map.requestRenderAll();
     	this._showToolbar();
     },
+    
     _showToolbar(){
     	if(this.pad.curType === undefined)
     		this.pad.curType = 'frame';
@@ -288,6 +201,9 @@ var Panelmap = Glassmap.extend({
     	this.map.renderAll();
     	
     	this.$buttons.find('.fa-mouse-pointer').click();
+    	if(this.hawkeye.visible)
+    		//this.hawkmap.drawImage();
+    		this.hawkmap.showImage();
     },
     _onButtonSave:function(){
     	var self = this;
@@ -442,6 +358,16 @@ var Panelmap = Glassmap.extend({
     	
     	this.$buttons.on('click', '.o_pad_object_list>li',this._onButtonSelectObject.bind(this) );
      },
+     _updateControlPanel: function () {    			
+      	this.update_control_panel({
+                breadcrumbs: this.action_manager.get_breadcrumbs(),
+                cp_content: {
+              	  $searchview: this.$buttons,
+              	  //$buttons: this.$buttons,
+              	  //$switch_buttons:this.$switch_buttons,
+              },
+      	});
+  	},
      
      _loadPad: function(){
     	var self = this;
@@ -457,139 +383,19 @@ var Panelmap = Glassmap.extend({
          	.always(self._drawPad.bind(this));
      },
      
-     _drawPad(){ 
- 		var self = this;
- 		var innerFrame = null;
- 		var outerFrame = null;
- 		this.jsonpad.forEach(function(pad){
- 			var obj = new Mycanvas.MyPolyline(self.map,pad.padType);
- 			pad.points.forEach(function(p){
- 				obj.addPoint(p);
- 			})
- 			
- 			if(pad.goa){
- 				obj.goa = new Mycanvas.Goa({
- 	    			left:pad.goa.left,
- 	    			top:pad.goa.top,
- 	    			padType:pad.padType,
- 	    			polyline:obj,
- 	    			scaleX:pad.goa.scaleX,
-					scaleY:pad.goa.scaleY,
-					angle:pad.goa.angle,
-					visible:false
- 	    		}); 
- 	        	self.map.add(obj.goa);
- 			}
- 			
- 			self.pad.objs.push(obj);
- 			
- 			if(pad.padType == 'frame'){
- 				obj.crosses[0].set({visible:true,lockMovementX:false,lockMovementY:false});
- 		 		obj.crosses[1].set({visible:true,lockMovementX:false,lockMovementY:false});
- 		 		
- 		 		if(innerFrame == null)
- 		 			innerFrame = obj;
- 		 		else if(outerFrame == null)
- 		 			outerFrame = obj;
- 			}else{
- 				obj.crosses.forEach(function(cross){
- 					cross.set({visible:false});
- 				});
- 				obj.lines.forEach(function(line){
- 					line.set({visible:false});
- 				})
- 			}
- 		})
- 		
- 		if(innerFrame == null){
- 			innerFrame = new Mycanvas.MyPolyline(this.map,'frame');
- 			innerFrame.addPoint({x:500,y:this.image.height-500});
- 			innerFrame.addPoint({x:this.image.width-500,y:500});
- 			innerFrame.crosses[0].set({visible:true,lockMovementX:false,lockMovementY:false});
- 			innerFrame.crosses[1].set({visible:true,lockMovementX:false,lockMovementY:false});
- 			this.pad.objs.push(innerFrame);
- 		}
- 		
-		if(outerFrame == null){
-			outerFrame = new Mycanvas.MyPolyline(this.map,this.pad.curType);
-			outerFrame.addPoint({x:300,y:this.image.height-300});
-			outerFrame.addPoint({x:this.image.width-300,y:300});
-			outerFrame.crosses[0].set({visible:true,lockMovementX:false,lockMovementY:false});
-			outerFrame.crosses[1].set({visible:true,lockMovementX:false,lockMovementY:false});
-			this.pad.objs.push(outerFrame);
-		}
- 		
-		innerFrame.crosses[0].outer = [outerFrame.crosses[0],outerFrame.crosses[1]];
- 		innerFrame.crosses[1].outer = [outerFrame.crosses[0],outerFrame.crosses[1]];
- 		
-		outerFrame.crosses[0].inner = [innerFrame.crosses[0],innerFrame.crosses[1]];
-		outerFrame.crosses[1].inner = [innerFrame.crosses[0],innerFrame.crosses[1]];
-		
-		this._drawRegion(innerFrame,outerFrame);
-		
-		this.map.discardActiveObject();
-
-     },
      _drawHawk:function() {
     	 this.hawkeye = new Mycanvas.Hawkeye({ 
- 			top: 300/this.map.getZoom(), 
- 			left: 300/this.map.getZoom(),
- 			width:50/this.map.getZoom(),
- 			height:50/this.map.getZoom(),
+ 			top: 25.8/this.map.getZoom(), 
+ 			left: 22.7/this.map.getZoom(),
+ 			width:30/this.map.getZoom(),
+ 			height:30/this.map.getZoom(),
  			});
  		this.map.add(this.hawkeye);
+ 		this.hawkeye.bringToFront();
  		
- 		this.hawk = new Panelhawk(this,{imgFile:this.imgFile});
- 		this.hawk.appendTo("body");
+ 		this.hawkmap = new Hawkmap(this,{imgFile:this.imgFile,panel:this});
+ 		this.hawkmap.appendTo('body');
  	  },
- 	 _drawRegion: function(innerFrame,outerFrame){
-
- 		var objects = this.map.getObjects('rect');
- 	    for (var i = 0, len = objects.length; i < len; i++) {
- 	    	if(objects[i].padType && objects[i].padType == 'frame_region'){
-				this.map.remove(objects[i]);		
-			}
- 	    }
-
- 		 var top = outerFrame.crosses[1].top;
- 		 while(true){
- 			 var height = this.config.region_height;
- 			 var nextTop = top + this.config.region_height - this.config.region_overlap;
- 			if((nextTop + this.config.region_height)  > outerFrame.crosses[0].top ){
- 				height = outerFrame.crosses[0].top - top;
- 			}
- 			var rect = new Mycanvas.Rect({
- 				left:outerFrame.crosses[0].left,
- 				top,
- 				stroke: 'blue',
- 				width:innerFrame.crosses[0].left - outerFrame.crosses[0].left,
- 				height,
- 				padType:"frame_region"
- 			});
- 			this.map.add(rect);
- 			
- 			rect = new Mycanvas.Rect({
-				left:innerFrame.crosses[1].left,
-				top,
-				stroke: 'blue',
-				width:outerFrame.crosses[1].left - innerFrame.crosses[1].left,
-				height,
-				padType:"frame_region"
-			});
-			this.map.add(rect);
- 			
- 			top = nextTop;
- 			if((top + this.config.region_height) > outerFrame.crosses[0].top)
- 				break;
- 		 }
- 		 
- 		innerFrame.crosses[0].bringToFront();
- 		innerFrame.crosses[1].bringToFront();
- 		outerFrame.crosses[0].bringToFront();
- 		outerFrame.crosses[1].bringToFront();
- 		//this.map.renderAll();
- 		 
- 	 },
 });
 
 core.action_registry.add('padtool.panelmap', Panelmap);

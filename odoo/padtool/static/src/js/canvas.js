@@ -30,7 +30,7 @@ var Rect = fabric.util.createClass(fabric.Rect, {
     //hoverCursor:"move",
     lockMovementX:true,
 	lockMovementY:true,
-//	hasControls: false,
+	hasControls: false,
     initialize: function(options) {
     	this.callSuper('initialize',options);
     	this.padType = options.padType || '';
@@ -220,13 +220,17 @@ var Cross = fabric.util.createClass(fabric.Object, {
   });
 
 var Hawkeye = fabric.util.createClass(fabric.Object, {
-	
+	type:'hawkeye',
+	hasRotatingPoint:false,
+	transparentCorners: false,
     objectCaching: false,
-	hasControls: false,
+	//hasControls: false,
 	hasBorders:false,
 	visible:false,
 	originX:"center",
 	originY:"center",
+	cornerSize:5,
+	hoverCursor:'move',
 	
     initialize: function(options) {
     	this.callSuper('initialize', options);
@@ -235,17 +239,18 @@ var Hawkeye = fabric.util.createClass(fabric.Object, {
     },
 
 	_render: function(ctx) {
-		this.width = 50/this.canvas.getZoom(),
-		this.height = 50/this.canvas.getZoom(),
+		//this.width = 50/this.canvas.getZoom(),
+		//this.height = 50/this.canvas.getZoom(),
 		
 		ctx.beginPath(); 
-		ctx.lineWidth= Math.round(2/this.canvas.getZoom())+"";
+		ctx.lineWidth=  1/(this.canvas.getZoom()*this.scaleY);
 		ctx.strokeStyle="yellow"; 
 		ctx.moveTo(-this.width/2,0);
 		ctx.lineTo(this.width/2,0);
 		ctx.stroke();
 
 		ctx.beginPath();
+		ctx.lineWidth=  1/(this.canvas.getZoom()*this.scaleX);
 		ctx.moveTo(0,-this.height/2);
 		ctx.lineTo(0,this.height/2); 
 		ctx.stroke(); 
