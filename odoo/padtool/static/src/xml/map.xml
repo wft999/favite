@@ -41,6 +41,7 @@
     </div>
     <div class="btn-group btn-group-md" role="group">
 		<button class="btn btn-default fa fa-eye" title="Hawkeye" data-mode="hawkeye"/>
+		<button class="btn btn-default fa fa-save" title="Save" data-mode="select"/>
     </div>
     <div class="btn-group btn-group-md glassmap-mode" role="group">
 		<button class="btn btn-default fa fa-mouse-pointer active" title="Select" data-mode="default"/>
@@ -52,7 +53,6 @@
     
     
 	<div class="btn-group btn-group-md"  role="group">
-		<button class="btn btn-default fa fa-save" title="Save" data-mode="select"/>
         <button class="btn btn-default fa fa-copy" title="Copy" data-mode="copy"/>
         <button class="btn btn-default fa fa-cut" title="Delete Point" data-mode="zoom_in"/>
         <button class="btn btn-default fa fa-trash" title="Delete Object" data-mode="zoom_in"/>

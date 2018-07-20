@@ -17,16 +17,10 @@ var CanvasInfo = Widget.extend({
     },
 });
 
-var Basemap = Widget.extend({
-    template: 'Map',
-/*    
-    events: {
-        'click .o_setup_company': 'on_setup_company'
-    },
-*/
-    init: function(parent,action){
-    	this.action_manager = parent;
-    	if(action.menu_id){
+var Map = Widget.extend({
+	init: function(parent,action){
+		this.action_manager = parent;
+    	if(action && action.menu_id){
     		this.menu_id = action.menu_id;
     	}else{
     		var queryString = document.location.hash.slice(1);
@@ -35,102 +29,138 @@ var Basemap = Widget.extend({
         		this.menu_id = params.menu_id;
         	}
     	}
-    	
         return this._super.apply(this, arguments);
     },
-
-    start: function(){    	
+    
+    start: function(){
     	var self = this;
+    	this._super.apply(this, arguments);
     	
     	this.defImage = new $.Deferred();
-       	console.log('_loadImage start');
     	this.image = new fabric.Image();
-    	this.image.setSrc(this.imgFile, this._onLoadImage.bind(this));
+    	this.image.setSrc(this.imgFile, function(img){
+    		img.set({left: 0,top: 0,hasControls:false,lockMovementX:true,lockMovementY:true,selectable:false });
+    		self.map  = new fabric.Canvas('map',{hoverCursor:'default',stopContextMenu:true});
+    		var zoom = Math.max(self.map.getWidth()/img.width,self.map.getHeight()/img.height);
+    		zoom = Math.floor(zoom*10)/10;
+    		self.minZoom = zoom;
+    		self.map.setZoom(zoom);
+    		self.map.setDimensions({width:img.width*zoom,height:img.height*zoom});
+    		//this.map.setBackgroundImage(img);
+    		self.map.add(img);
 
+    		self.map.on('mouse:move',_.debounce(self._onMouseMove.bind(self), 100));    		
+    		self.map.on('mouse:out', self._onMouseOut.bind(self));
+    		self.map.on('mouse:up', self._onMouseUp.bind(self));
+    		self.map.on('mouse:down',self._onMouseDown.bind(self));
+
+    		//setTimeout(self._animate.bind(self), 500);
+    		//self.map.on('object:moving',_.debounce(self._onObjectMoving.bind(self), 100));
+    		self.map.on('object:moving',self._onObjectMoving.bind(self));
+    		self.map.on('object:scaling',self._onObjectScaling.bind(self));
+    		self.map.on('object:rotating',self._onObjectScaling.bind(self));
+    		self.map.on('object:modified',self._onObjectModified.bind(self));
+    		self.map.on('selection:updated',self._onObjectSelect.bind(self));
+    		self.map.on('selection:created',self._onObjectSelect.bind(self));
+    		
+    		self.defImage.resolve();
+    	});
+    	
     },
     
-    //--------------------------------------------------------------------------
+    destroy: function(){	
+    	this._super.apply(this, arguments);
+    },
+
+  //--------------------------------------------------------------------------
     // Private
     //--------------------------------------------------------------------------
+    _onObjectSelect: function(opt){
+    	if(opt.target.polyline &&opt.target.polyline.hawkeye){
+    		opt.target.polyline.hawkeye.crosses[opt.target.id] && this.hawkmap.map._setActiveObject(opt.target.polyline.hawkeye.crosses[opt.target.id]);
+    		this.hawkmap.map.requestRenderAll();
+    	}
+    },
+    _animate: function () {
+    	var objs = this.map.getActiveObjects();
+		if(objs.length && objs[0].animateColor){
+			objs[0].animateColor();
+			objs[0].dirty = true;
+			this.map.renderAll();
+		}
+        
+        setTimeout(this._animate.bind(this), 500);
+      },
+      
+     _onObjectScaling:function(){
+    	 this.map.objectModifing = true;
+     },
+     
+     _onObjectModified: function(opt){
+    	 if(opt.target.type == "hawkeye"){
+     		this.hawkmap.showImage();
+     	}else if(opt.target.type == "goa"){
+     		this.pad.isModified = true;
+     		if(opt.target.polyline &&opt.target.polyline.hawkeye){
+    			opt.target.polyline.hawkeye.goa.left = (opt.target.left-this.hawkmap.eyeLeft)/this.padConf[this.panelName].panel_map_ratio_x;
+    			opt.target.polyline.hawkeye.goa.top = (opt.target.top-this.hawkmap.eyeTop)/this.padConf[this.panelName].panel_map_ratio_y;
+    			opt.target.polyline.hawkeye.goa.scaleX = opt.target.scaleX/this.padConf[this.panelName].panel_map_ratio_x;
+    			opt.target.polyline.hawkeye.goa.scaleY = opt.target.scaleY/this.padConf[this.panelName].panel_map_ratio_y;
+    			opt.target.polyline.hawkeye.goa.angle = opt.target.angle;
+    			
+    			opt.target.polyline.hawkeye.map.requestRenderAll();
+        	}
+     	}
+     },
+     
+    _onObjectMoving: function(opt){
+    	this.map.objectModifing = true;
+    	if(this.map.hoverCursor !== 'default')
+    		return;
+    	
+    	if(opt.target.type == "cross"){
+    		this.pad.isModified = true;
+    		opt.target.mouseMove();
+    		
+    		if(opt.target.polyline &&opt.target.polyline.hawkeye){
+    			opt.target.polyline.hawkeye.crosses[opt.target.id].left = (opt.target.left-this.hawkmap.eyeLeft)/this.padConf[this.panelName].panel_map_ratio_x;
+    			opt.target.polyline.hawkeye.crosses[opt.target.id].top = (opt.target.top-this.hawkmap.eyeTop)/this.padConf[this.panelName].panel_map_ratio_y;
+    			opt.target.polyline.hawkeye.crosses[opt.target.id].mouseMove();
+    			opt.target.polyline.hawkeye.map.requestRenderAll();
+    			
+    			let{dOutputX:ux,dOutputY:uy} = this.coordinate.PanelMapCoordinateToUMCoordinate(opt.target.left,this.image.height-opt.target.top);
+        		opt.target.polyline.hawkeye.points[opt.target.id].ux = ux;
+        		opt.target.polyline.hawkeye.points[opt.target.id].uy = uy;
+        	}
+    		
+    		if(opt.target.padType == 'frame'){
+        		var innerFrame = opt.target.inner?opt.target.inner[0].polyline:opt.target.polyline;
+        		var outerFrame = opt.target.outer?opt.target.outer[0].polyline:opt.target.polyline;
+        		this._drawRegion(innerFrame,outerFrame);
+    		}	
+    		this.map.renderAll();
+    	}
+    	
+    	opt.e.stopPropagation();
+        opt.e.preventDefault();
+    	
+    },
     
-	_onMouseDown:function(opt){
+    _onMouseDown:function(opt){
     	this.map._isMousedown = true;
     	this.map.startPointer = opt.pointer;
     },
 	_onMouseMove:function(opt){
-		
 		var zoom = this.map.getZoom();
 		var x = opt.e.offsetX;
 		var y = opt.e.offsetY;
 		$(".map-info").text("image(x:"+Math.round(x/zoom)+",y:"+Math.round(y/zoom)+") window(x:"+x+",y:"+y+")");
 		
-    	if(this.map._isMousedown && (this.map.startPointer.x != opt.pointer.x ||this.map.startPointer.y != opt.pointer.y)){
-    		this.map._isDrawRect = true;
-    	}
     	opt.e.stopPropagation();
-        opt.e.preventDefault();
-    		
+        opt.e.preventDefault();	
 	},
 	_onMouseOut:function(opt){
 		$(".map-info").text("");
-	},
-	_onMouseUp:function(opt){
-		if(this.map._isDrawRect){
-			this.map._isDrawRect = false;
-			return;
-		}
-		
-		var delta = 0;
-		if(this.map.hoverCursor == 'zoom-in')
-			delta = 0.2;
-		else if(this.map.hoverCursor == 'zoom-out')
-			delta = -0.2;
-		else
-			return;
-		
-		var zoom = this.map.getZoom();//this.image.scaleX;
-		var x = opt.e.offsetX / zoom;
-		var y = opt.e.offsetY / zoom;
-		
-		zoom = zoom + delta;
-		zoom = Math.floor(zoom*10)/10;
-		if (zoom > 2) zoom = 2;
-		if (zoom <= this.minZoom) zoom = this.minZoom;
-		
-		var div = this.$('div.canvas-map').length? this.$('div.canvas-map'): this.$el;
-		
-		x = x * zoom - (opt.e.offsetX -div.scrollLeft());
-		y = y * zoom - (opt.e.offsetY-div.scrollTop());
-		
-		this.map.setZoom(zoom);
-		this.map.setDimensions({width:this.image.width*zoom,height:this.image.height*zoom});
-		//this.image.scale(zoom);
-		
-		opt.e.preventDefault();
-		opt.e.stopPropagation();
-
-		div.scrollTop(y);
-		div.scrollLeft(x);
-	},
-	
-	_onLoadImage(img){
-		img.set({left: 0,top: 0,hasControls:false,lockMovementX:true,lockMovementY:true,selectable:false });
-		this.map  = new fabric.Canvas('map',{hoverCursor:'default',stopContextMenu:true});
-		var zoom = Math.max(this.map.getWidth()/img.width,this.map.getHeight()/img.height);
-		zoom = Math.floor(zoom*10)/10;
-		this.minZoom = zoom;
-		this.map.setZoom(zoom);
-		this.map.setDimensions({width:img.width*zoom,height:img.height*zoom});
-		//this.map.setBackgroundImage(img);
-		this.map.add(img);
-
-		this.map.on('mouse:move',_.debounce(this._onMouseMove.bind(this), 100));    		
-		this.map.on('mouse:out', this._onMouseOut.bind(this));
-		this.map.on('mouse:up', this._onMouseUp.bind(this));
-		this.map.on('mouse:down',this._onMouseDown.bind(this));
-		
-		console.log('_loadImage end');
-		this.defImage.resolve();
 	},
     
     _parseQueryString: function(query) {
@@ -144,151 +174,148 @@ var Basemap = Widget.extend({
         }
         return params;
       },
-    
-});
-
-var Map = Basemap.extend({
-	init: function(parent,action){
-
-        return this._super.apply(this, arguments);
-    },
-    
-    start: function(){
-    	var self = this;
-    	this._super.apply(this, arguments);
-    	$.when(self.defImage).then(function ( ) {
-    		setTimeout(self._animate.bind(self), 500);
-    		self.map.on('object:moving',_.debounce(self._onObjectMoving.bind(self), 100));
-    		self.map.on('object:scaled',self._onObjectScale.bind(self));
-    		self.map.on('object:moved',self._onObjectScale.bind(self));
-    	});
-    },
-    
-    destroy: function(){	
-    	this._super.apply(this, arguments);
-    },
-
-  //--------------------------------------------------------------------------
-    // Private
-    //--------------------------------------------------------------------------
-    _animate: function () {
-    	var objs = this.map.getActiveObjects();
-		if(objs.length && objs[0].animateColor){
-			objs[0].animateColor();
-			objs[0].dirty = true;
-			this.map.renderAll();
-		}
-        
-        setTimeout(this._animate.bind(this), 500);
-      },
-      
-     _onObjectScale: function(opt){
-    	 if(opt.target.type == "hawkeye"){
-     		this.hawkmap.showImage();
-     	}
-     },
-     
-    _onObjectMoving: function(opt){
-    	if(this.map.hoverCursor !== 'default')
-    		return;
-    	
-    	if(opt.target.mouseMove){
-    		opt.target.mouseMove();
-    		this.pad.isModified = true;
-    		if(opt.target.padType == 'frame'){
-    			var innerFrame = opt.target.inner?opt.target.inner[0].polyline:opt.target.polyline;
-    		    var outerFrame = opt.target.outer?opt.target.outer[0].polyline:opt.target.polyline;
-    			this._drawRegion(innerFrame,outerFrame);
-    		}	
-    		this.map.renderAll();
-    	}else if(opt.target.type == "hawkeye"){
-    		//this.hawkmap.drawImage();
-    		//this.hawkmap.showImage();
-    	}
-    	
-    	opt.e.stopPropagation();
-        opt.e.preventDefault();
-    	
-    },
 
     _onMouseUp:function(opt){
-    	this._super.apply(this, arguments);
-    	
     	var zoom = this.map.getZoom();
     	var endPointer = opt.pointer;
-    	if(this.map.hoverCursor == 'paste'){
+    	var _isDrawRect = this.map.startPointer.x != endPointer.x ||this.map.startPointer.y != endPointer.y;
+    	
+    	endPointer.x /= zoom;
+    	endPointer.y /= zoom;
+    	if(!_isDrawRect && (this.map.hoverCursor == 'zoom-in' || this.map.hoverCursor == 'zoom-out')){
+    		var delta = this.map.hoverCursor == 'zoom-in'?0.2:-0.2;
+    		var x = opt.e.offsetX / zoom;
+    		var y = opt.e.offsetY / zoom;
     		
-    		if(this.pad.pasteObj && this.pad.pasteObj.padType == this.pad.curType){
-    			var offsetX = endPointer.x/zoom - this.pad.pasteObj.left;
-        		var offsetY = endPointer.y/zoom - this.pad.pasteObj.top;
-        		var points = this.pad.pasteObj.polyline.points;
-        		
-        		var polyline = new Mycanvas.MyPolyline(this.map,this.pad.curType);
-        		for(var i = 0; i < points.length; i++){
-        			polyline.addPoint({
-        				x: points[i].x + offsetX,
-        				y: points[i].y + offsetY,
-        			});
-        		}
-        		this.pad.objs.push(polyline);
-        		
-        		var goa = this.pad.pasteObj.polyline.goa;
-        		if(goa){
-        			polyline.goa = new Mycanvas.Goa({
-     	    			left:goa.left + offsetX,
-     	    			top:goa.top + offsetY,
-     	    			padType:this.pad.curType,
-     	    			polyline:polyline,
-     	    			scaleX:goa.scaleX,
-    					scaleY:goa.scaleY,
-    					angle:goa.angle,
-    					visible:true
-     	    		}); 
-     	        	this.map.add(polyline.goa);
-        		}
-        		
-        		this.pad.isModified = true;
-    		}	
-    	}else if(this.map.hoverCursor == 'crosshair'){
-    		if(this.map._isDrawRect){
-    			this.map.discardActiveObject();
-    			var rect = new Mycanvas.MyPolyline(this.map,this.pad.curType);
-        		rect.addPoint({
-        				x:Math.min(this.map.startPointer.x/zoom,endPointer.x/zoom), 
-        				y: Math.max(this.map.startPointer.y/zoom,endPointer.y/zoom)
-        			})
-        		rect.addPoint({
-        				x:Math.max(this.map.startPointer.x/zoom,endPointer.x/zoom),
-        				y:Math.min(this.map.startPointer.y/zoom,endPointer.y/zoom)
-        			});
-        		this.curPolyline = null;
-        		this.pad.objs.push(rect);
-        		this.pad.isModified = true;
-        		
-        		//this.$buttons.find('.fa-mouse-pointer').click();
-    		}else if(this.pad.curType=='inspectZone' || this.pad.curType=='uninspectZone'){
-    			if(!this.curPolyline){
-    				this.curPolyline = new Mycanvas.MyPolyline(this.map,this.pad.curType);
-    				this.pad.objs.push(this.curPolyline);
-    				this.pad.isModified = true;
-    			}
-    				
-        		if(!this.curPolyline.addPoint({x: endPointer.x/zoom, y: endPointer.y/zoom})){
-        			this.notification_manager.notify(_t('Incorrect Operation'),_t('Please enter valid point!'),false);
-        		}
-        			
+    		zoom = zoom + delta;
+    		zoom = Math.floor(zoom*10)/10;
+    		if (zoom > 1.2) zoom = 1.2;
+    		if (zoom <= this.minZoom) zoom = this.minZoom;
+    		
+    		var div = this.$('div.canvas-map').length? this.$('div.canvas-map'): this.$el;
+    		
+    		x = x * zoom - (opt.e.offsetX -div.scrollLeft());
+    		y = y * zoom - (opt.e.offsetY-div.scrollTop());
+    		
+    		this.map.setZoom(zoom);
+    		this.map.setDimensions({width:this.image.width*zoom,height:this.image.height*zoom});
+    		//this.image.scale(zoom);
+    		
+    		opt.e.preventDefault();
+    		opt.e.stopPropagation();
+
+    		div.scrollTop(y);
+    		div.scrollLeft(x);
+    	}else if(!_isDrawRect && this.map.hoverCursor == 'paste' && this.pad.pasteObj && this.pad.pasteObj.padType == this.pad.curType){
+    		var offsetX = endPointer.x - this.pad.pasteObj.left;
+    		var offsetY = endPointer.y - this.pad.pasteObj.top;
+    		
+    		var points = this.pad.pasteObj.polyline.points;
+    		
+    		var polyline = new Mycanvas.MyPolyline(this.map,this.pad.curType);
+    		for(var i = 0; i < points.length; i++){
+    			let{dOutputX:ux,dOutputY:uy} = this.coordinate.PanelMapCoordinateToUMCoordinate(points[i].x + offsetX,points[i].y + offsetY);	
+    			polyline.addPoint({
+    				x: points[i].x + offsetX,
+    				y: points[i].y + offsetY,
+    				ux,uy
+    			});
     		}
+    		this.pad.objs.push(polyline);
     		
-		}else if(this.map.hoverCursor == 'default' && this.map._isDrawRect){
+    		var goa = this.pad.pasteObj.polyline.goa;
+    		if(goa){
+    			polyline.goa = new Mycanvas.Goa({
+ 	    			left:goa.left + offsetX,
+ 	    			top:goa.top + offsetY,
+ 	    			padType:this.pad.curType,
+ 	    			polyline:polyline,
+ 	    			scaleX:goa.scaleX,
+					scaleY:goa.scaleY,
+					angle:goa.angle,
+					visible:true
+ 	    		}); 
+    			this.map.add(polyline.goa);
+    		}
+    		this.needUpdateHawk = true;
+    		this.pad.isModified = true;
+    	}else if(_isDrawRect && this.map.hoverCursor == 'crosshair' && (!this.map.objectModifing)){
+    		var startPointer = new Object();
+	    	startPointer.x = this.map.startPointer.x/zoom;
+	    	startPointer.y = this.map.startPointer.y/zoom;
+
+			this.map.discardActiveObject();
+			var rect = new Mycanvas.MyPolyline(this.map,this.pad.curType);
+			let{dOutputX:ux,dOutputY:uy} = this.coordinate.PanelMapCoordinateToUMCoordinate(Math.min(startPointer.x,endPointer.x),this.image.height-Math.max(startPointer.y,endPointer.y));	
+    		rect.addPoint({
+    				x:Math.min(startPointer.x,endPointer.x), 
+    				y: Math.max(startPointer.y,endPointer.y),
+    				ux,uy
+    			})
+    			
+    		let{dOutputX:ux2,dOutputY:uy2} = this.coordinate.PanelMapCoordinateToUMCoordinate(Math.max(startPointer.x,endPointer.x),this.image.height-Math.min(startPointer.y,endPointer.y));	
+    		rect.addPoint({
+    				x:Math.max(startPointer.x,endPointer.x),
+    				y:Math.min(startPointer.y,endPointer.y),
+    				ux:ux2,
+    				uy:uy2
+    			});
+    		
+    		this.needUpdateHawk = true;
+    		this.curPolyline = null;
+    		this.pad.objs.push(rect);
+    		this.pad.isModified = true;
+    		
+    		//this.$buttons.find('.fa-mouse-pointer').click();
+    	}else if(_isDrawRect == false && this.map.hoverCursor == 'crosshair' && (this.pad.curType=='inspectZone' || this.pad.curType=='uninspectZone')){
+			if(!this.curPolyline){
+				this.curPolyline = new Mycanvas.MyPolyline(this.map,this.pad.curType);
+				this.pad.objs.push(this.curPolyline);
+			}
+			
+			let{dOutputX:ux,dOutputY:uy} = this.coordinate.PanelMapCoordinateToUMCoordinate(endPointer.x,this.image.height-endPointer.y);	
+    		if(this.curPolyline.addPoint({x: endPointer.x, y: endPointer.y,ux,uy})){
+    			this.needUpdateHawk = true;
+    			this.pad.isModified = true;
+    		}else{
+    			this.notification_manager.notify(_t('Incorrect Operation'),_t('Please enter valid point!'),false);
+    		}
+    			
+		}else if( _isDrawRect && this.map.hoverCursor == 'default' && (!this.map.objectModifing)){
 			var objs = this.map.getActiveObjects();
 			if(objs.length){
 				this.map.discardActiveObject();
 				this.map.setActiveObject(objs[0]);
 			}
+			
+			if(this.hawkeye && this.hawkeye.visible){
+				if(this.hawkeye)
+					this.map.remove(this.hawkeye);
+				
+				this.hawkeye = new Mycanvas.Hawkeye({ 
+	     			top: (this.map.startPointer.y/zoom + endPointer.y)/2, 
+	     			left: (this.map.startPointer.x/zoom + endPointer.x)/2,
+	     			width:Math.abs(this.map.startPointer.x/zoom - endPointer.x),
+	     			height:Math.abs(this.map.startPointer.y/zoom - endPointer.y),
+	     			visible:true,
+	     		});
+	     		this.map.add(this.hawkeye);
+	     		this.hawkeye.bringToFront();
+	     		
+				this.hawkmap.showImage();
+			}
+			
 		}
+
+    	if(this.needUpdateHawk){
+    		this.needUpdateHawk = false;
+    		if(this.hawkeye.visible){
+    			this.hawkmap.showImage();
+    		}
+    	}
     			
     	this.map._isMousedown = false;
-    	this.map._isDrawRect = false;
+    	this.map.objectModifing = false;
     },
   
      _drawPad(){ 
@@ -437,6 +464,6 @@ var Map = Basemap.extend({
 
 SystrayMenu.Items.push(CanvasInfo);
 
-return {Basemap,Map};
+return Map;
 
 });

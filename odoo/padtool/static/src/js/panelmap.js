@@ -15,7 +15,7 @@ var QWeb = core.qweb;
 var _t = core._t;
 
 
-var Panelmap = Map.Map.extend(ControlPanelMixin,{
+var Panelmap = Map.extend(ControlPanelMixin,{
     template: 'Map',
 /*    
     events: {
@@ -40,6 +40,7 @@ var Panelmap = Map.Map.extend(ControlPanelMixin,{
             .then(function(res) {
             	_.extend(self,res);
             	self.coordinate = new Coordinate(res.cameraConf,res.bifConf,res.padConf,res.panelName);
+            	self.tmpCoordinate = new Coordinate(res.cameraConf,res.bifConf,res.padConf,res.panelName);
             });
     },
     
@@ -58,10 +59,9 @@ var Panelmap = Map.Map.extend(ControlPanelMixin,{
     		self.coordinate.pmpPanelMapPara.iPanelMapHeight = self.image.height;
     		
     		self._loadPad();
-    		self._drawHawk();
     		self._showToolbar();
-    		$('.breadcrumb').append('<li>frame</li>')
-    		
+    		self._drawHawk();
+    		$('.breadcrumb').append('<li>frame</li>');
     	});
     },
     
@@ -87,9 +87,24 @@ var Panelmap = Map.Map.extend(ControlPanelMixin,{
         this._updateControlPanel();
         
     },
+
   //--------------------------------------------------------------------------
     // Private
     //--------------------------------------------------------------------------
+    _drawHawk:function(){
+    	this.hawkmap = new Hawkmap(this);
+    	this.hawkmap.pad = this.pad;
+    	this.hawkmap.appendTo('body');
+		
+    	this.hawkeye = new Mycanvas.Hawkeye({ 
+ 			left: this.image.width/2, 
+ 			top: this.image.height/2,
+ 			width:300,
+ 			height:300,
+ 			});
+    	this.map.add(this.hawkeye);
+    	this.hawkeye.bringToFront();
+    },
 
     _onButtonSelectMode:function(e){
     	var self = this;
@@ -102,18 +117,20 @@ var Panelmap = Map.Map.extend(ControlPanelMixin,{
     		this.hawkmap.map.hoverCursor = this.map.hoverCursor;
     	
     	if(this.map.hoverCursor == 'default'){
-    		this.map.forEachObject(function(obj){
-    			if((obj.type == 'cross' || obj.type == 'goa') && obj.padType == self.pad.curType){
+    		function defaultMode(obj){
+    			if((obj.type == 'cross' || obj.type == 'goa') && obj.padType == this.pad.curType){
     				obj.lockMovementX = false;
     				obj.lockMovementY = false;
     				obj.hoverCursor="move";
     				//obj.visible = true;
     				obj.hasControls = obj.type == 'goa';		
     			}	
-    		})
+    		}
+    		this.map.forEachObject(defaultMode.bind(this));
+    		this.hawkmap.map && this.hawkmap.map.forEachObject(defaultMode.bind(this));
     	}	
     	else{
-    		this.map.forEachObject(function(obj){
+    		function noDefaultMode(obj){
     			if(obj.type == 'cross' || obj.type == 'goa'){
     				obj.lockMovementX = true;
     				obj.lockMovementY = true;
@@ -121,7 +138,9 @@ var Panelmap = Map.Map.extend(ControlPanelMixin,{
     				//obj.visible = false;
     				obj.hasControls = false;
     			}	
-    		})
+    		}
+    		this.map.forEachObject(noDefaultMode);
+    		this.hawkmap.map && this.hawkmap.map.forEachObject(noDefaultMode);
     	}	
     	//this.map.discardActiveObject();
     	if(this.map.hoverCursor == 'crosshair'){
@@ -131,11 +150,12 @@ var Panelmap = Map.Map.extend(ControlPanelMixin,{
 			else
 				this.curPolyline = null;
 			
-			$('.panel-hawk').addClass('o_hidden');
-	    	this.hawkeye.visible = false;
+			//$('.panel-hawk').addClass('o_hidden');
+	    	//this.hawkeye.visible = false;
     	}
     	
     	this.map.requestRenderAll();
+    	this.hawkmap.map && this.hawkmap.map.requestRenderAll();
     	this._showToolbar();
     },
     
@@ -181,15 +201,18 @@ var Panelmap = Map.Map.extend(ControlPanelMixin,{
             }
         });
     	
-    	this.map.forEachObject(function(obj){
-    		obj.visible = obj.padType ? obj.padType.match(self.pad.curType) : obj.visible;
+    	function selectObj(obj){
+    		obj.visible = obj.padType ? obj.padType.match(this.pad.curType) : obj.visible;
     		
-		})
+		}
+    	this.map.forEachObject(selectObj.bind(this));
+    	this.hawkmap.map && this.hawkmap.map.forEachObject(selectObj.bind(this));
 		
     	this.map.discardActiveObject();
     	this.$buttons.find('.fa-mouse-pointer').click();
     	
     	this.map.renderAll();
+    	this.hawkmap.map && this.hawkmap.map.renderAll();
     	
     	e.preventDefault();
 		e.stopPropagation();
@@ -197,21 +220,30 @@ var Panelmap = Map.Map.extend(ControlPanelMixin,{
     },
     _onButtonHawkeye:function(){
     	$('.panel-hawk').toggleClass('o_hidden');
+    	
     	this.hawkeye.visible = !this.hawkeye.visible;
     	this.map.renderAll();
     	
     	this.$buttons.find('.fa-mouse-pointer').click();
     	if(this.hawkeye.visible)
-    		//this.hawkmap.drawImage();
     		this.hawkmap.showImage();
     },
     _onButtonSave:function(){
     	var self = this;
     	var pad = new Array();
+
     	this.pad.objs.forEach(function(obj){
     		var o = {
     			padType: obj.padType,
-    	    	points: obj.points,
+    			points:obj.points,
+    	    	points:_.map(obj.points, function(p){ 
+    	    		if(p.ux == undefined || p.uy == undefined){
+    	    			let {dOutputX:ux,dOutputY:uy} = self.coordinate.PanelMapCoordinateToUMCoordinate(p.x,self.image.height - p.y);
+        	    		p.ux = ux;
+        	    		p.uy = uy;
+    	    		}
+    	    		return p;
+    	    	})
     		};
     		if(obj.goa){
     			o.goa = {
@@ -223,6 +255,24 @@ var Panelmap = Map.Map.extend(ControlPanelMixin,{
     					scaleY:obj.goa.scaleY,
     					angle:obj.goa.angle,
     			}
+    		}
+    		if(obj.padType == "mainMark"){
+    			var left = Math.min(obj.points[0].ux,obj.points[1].ux);
+    	    	var right = Math.max(obj.points[0].ux,obj.points[1].ux);
+    	    	var top = Math.max(obj.points[0].uy,obj.points[1].uy);
+    	    	var bottom = Math.min(obj.points[0].uy,obj.points[1].uy);
+    	    	self.tmpCoordinate.GetRectIntersectionInfoInBlockMapMatrix(left,bottom,right,top,true);
+    	    	o.blocks = _.map(self.tmpCoordinate.bmpBlockMapPara.m_BlockMap[0],function(item){
+    	    		return {
+    	    			iIPIndex:item.iIPIndex,
+    	    			iScanIndex:item.iScanIndex,
+    	    			iBlockIndex:item.iBlockIndex,
+    	    			iInterSectionStartX:item.iInterSectionStartX,
+    	    			iInterSectionStartY:item.iInterSectionStartY,
+    	    			iInterSectionWidth:item.iInterSectionWidth,
+    	    			iInterSectionHeight:item.iInterSectionHeight
+    	    			};
+    	    		});
     		}
     		pad.push(o);
     	});
@@ -278,6 +328,9 @@ var Panelmap = Map.Map.extend(ControlPanelMixin,{
     	}else{
     		this.notification_manager.notify(_t('Incorrect Operation'),_t('Please select one object!'),false);
     	}
+    	
+    	if(this.pad.isModified && this.hawkeye.visible)
+    		this.hawkmap.showImage();
     },
     _onButtonTrash:function(){
     	var objs = this.map.getActiveObjects();
@@ -305,6 +358,9 @@ var Panelmap = Map.Map.extend(ControlPanelMixin,{
     	}else{
     		this.notification_manager.notify(_t('Incorrect Operation'),_t('Please select one object!'),false);
     	}
+    	
+    	if(this.pad.isModified && this.hawkeye.visible)
+    		this.hawkmap.showImage();
     },
     
     _onButtonAlign:function(){
@@ -336,6 +392,9 @@ var Panelmap = Map.Map.extend(ControlPanelMixin,{
     	}else{
     		this.notification_manager.notify(_t('Incorrect Operation'),_t('Please select one object!'),false);
     	}
+    	
+    	if(this.pad.isModified  && this.hawkeye.visible)
+    		this.hawkmap.showImage();
     },
     
     _renderButtons: function () {
@@ -382,20 +441,6 @@ var Panelmap = Map.Map.extend(ControlPanelMixin,{
          	})
          	.always(self._drawPad.bind(this));
      },
-     
-     _drawHawk:function() {
-    	 this.hawkeye = new Mycanvas.Hawkeye({ 
- 			top: 25.8/this.map.getZoom(), 
- 			left: 22.7/this.map.getZoom(),
- 			width:30/this.map.getZoom(),
- 			height:30/this.map.getZoom(),
- 			});
- 		this.map.add(this.hawkeye);
- 		this.hawkeye.bringToFront();
- 		
- 		this.hawkmap = new Hawkmap(this,{imgFile:this.imgFile,panel:this});
- 		this.hawkmap.appendTo('body');
- 	  },
 });
 
 core.action_registry.add('padtool.panelmap', Panelmap);

@@ -17,7 +17,7 @@
     # Check https://github.com/odoo/odoo/blob/master/odoo/addons/base/module/module_data.xml
     # for the full list
     'category': 'Favite Tools',
-    'version': '0.1',
+    'version': '1.5',
 
     # any module necessary for this one to work correctly
     'depends': ['web'],

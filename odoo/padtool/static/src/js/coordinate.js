@@ -170,6 +170,11 @@ var PANEL_MAP_PARA = Class.extend({
     	this.dRatioY = parseFloat(padConf[panelName]['PANEL_MAP_RATIO_Y'.toLowerCase()]);
     	this.dPanelCenterX = parseFloat(padConf[panelName]['PANEL_CENTER_X'.toLowerCase()]);
     	this.dPanelCenterY = parseFloat(padConf[panelName]['PANEL_CENTER_Y'.toLowerCase()]);
+    	
+    	this.dPanelMapLeft = parseFloat(padConf[panelName]['PANEL_MAP_LEFT'.toLowerCase()]);
+    	this.dPanelMapBottom = parseFloat(padConf[panelName]['PANEL_MAP_BOTTOM'.toLowerCase()]);
+    	this.dPanelMapRight = parseFloat(padConf[panelName]['PANEL_MAP_RIGHT'.toLowerCase()]);
+    	this.dPanelMapTop = parseFloat(padConf[panelName]['PANEL_MAP_TOP'.toLowerCase()]);
     },
 });
 
@@ -225,27 +230,81 @@ var COORDINATE_TRANSFER =  Class.extend({
     	
     },
     
+    JudgeIPScan_Pixel:function(dInputX,dInputY)
+    {
+    	var iIP, iScan;
+    	var iTotalIP;
+    	var iTotalScan;
+    	var iRange_Left;
+    	var iRange_Right;
+    	var iRange_Bottom;
+    	var iRange_Top;
+
+    	iTotalIP = this.mpMachinePara.iTotalIP;
+
+    	for(var iIPIndex = iTotalIP - 1; iIPIndex >= 0; iIPIndex --)
+    	{
+    		iTotalScan = this.mpMachinePara.aIPParaArray[iIPIndex].iTotalScan;
+    		for(var iScanIndex = iTotalScan - 1; iScanIndex >= 0; iScanIndex --)
+    		{
+    			iRange_Left = this.mpMachinePara.aIPParaArray[iIPIndex].aScanParaArray[iScanIndex].iRange_Left;
+    			iRange_Right = this.mpMachinePara.aIPParaArray[iIPIndex].aScanParaArray[iScanIndex].iRange_Right;
+    			iRange_Bottom = this.mpMachinePara.aIPParaArray[iIPIndex].aScanParaArray[iScanIndex].iRange_Bottom;
+    			iRange_Top = this.mpMachinePara.aIPParaArray[iIPIndex].aScanParaArray[iScanIndex].iRange_Top;
+
+    			if((dInputX >= iRange_Left) && (dInputX <= iRange_Right) && (dInputY >= iRange_Bottom) && (dInputY <= iRange_Top))
+    			{
+    				iIP = iIPIndex;
+    				iScan = iScanIndex;
+    				return{iIP, iScan};
+    			}
+    		}
+    	}
+
+    	return {};
+    },
+    
+    JudgeIPScan_UM:function(dInputX,dInputY)
+    {
+    	var iIP, iScan;
+    	var iTotalIP = mpMachinePara.iTotalIP;
+    	for(var iIPIndex = iTotalIP - 1; iIPIndex >= 0; iIPIndex --)
+    	{
+    		var iTotalScan = mpMachinePara.aIPParaArray[iIPIndex].iTotalScan;
+    		for(var iScanIndex = iTotalScan - 1; iScanIndex >= 0; iScanIndex --)
+    		{
+    			var dRange_Left = mpMachinePara.aIPParaArray[iIPIndex].aScanParaArray[iScanIndex].dRange_Left;
+    			var dRange_Right = mpMachinePara.aIPParaArray[iIPIndex].aScanParaArray[iScanIndex].dRange_Right;
+    			var dRange_Bottom = mpMachinePara.aIPParaArray[iIPIndex].aScanParaArray[iScanIndex].dRange_Bottom;
+    			var dRange_Top = mpMachinePara.aIPParaArray[iIPIndex].aScanParaArray[iScanIndex].dRange_Top;
+    			
+    			if((dInputX >= dRange_Left) && (dInputX <= dRange_Right) && (dInputY >= dRange_Bottom) && (dInputY <= dRange_Top))
+    			{
+    				iIP = iIPIndex;
+    				iScan = iScanIndex;
+
+    				return {iIP, iScan};
+    			}
+    		}
+    	}
+    	
+    	return {};
+    },
+    
     JudgeIPScanUM: function(dInputX, dInputY){
     	var iIP, iScan;
-    	
-    	var iTotalScan;
-    	var dRange_Left;
-    	var dRange_Right;
-    	var dRange_Bottom;
-    	var dRange_Top;
-    	
     	var iTotalIP = this.mpMachinePara.iTotalIP;
     	
     	for(var iIPIndex = iTotalIP - 1; iIPIndex >= 0; iIPIndex --)
     	{
-    		iTotalScan = this.mpMachinePara.aIPParaArray[iIPIndex].iTotalScan;
+    		var iTotalScan = this.mpMachinePara.aIPParaArray[iIPIndex].iTotalScan;
 
     		for(var iScanIndex = iTotalScan - 1; iScanIndex >= 0; iScanIndex --)
     		{
-    			dRange_Left = this.mpMachinePara.aIPParaArray[iIPIndex].aScanParaArray[iScanIndex].dRange_Left;
-    			dRange_Right = this.mpMachinePara.aIPParaArray[iIPIndex].aScanParaArray[iScanIndex].dRange_Right;
-    			dRange_Bottom = this.mpMachinePara.aIPParaArray[iIPIndex].aScanParaArray[iScanIndex].dRange_Bottom;
-    			dRange_Top = this.mpMachinePara.aIPParaArray[iIPIndex].aScanParaArray[iScanIndex].dRange_Top;
+    			var dRange_Left = this.mpMachinePara.aIPParaArray[iIPIndex].aScanParaArray[iScanIndex].dRange_Left;
+    			var dRange_Right = this.mpMachinePara.aIPParaArray[iIPIndex].aScanParaArray[iScanIndex].dRange_Right;
+    			var dRange_Bottom = this.mpMachinePara.aIPParaArray[iIPIndex].aScanParaArray[iScanIndex].dRange_Bottom;
+    			var dRange_Top = this.mpMachinePara.aIPParaArray[iIPIndex].aScanParaArray[iScanIndex].dRange_Top;
     			
     			if((dInputX >= dRange_Left) && (dInputX <= dRange_Right) && (dInputY >= dRange_Bottom) && (dInputY <= dRange_Top))
     			{
@@ -261,27 +320,18 @@ var COORDINATE_TRANSFER =  Class.extend({
     },
     
     UMCoordinateToBlockMapCoordinate: function(dInputX, dInputY){
-    	var dOutputX, dOutputY, iBlockIndex;
-    	
-    	var dOffsetX;
-    	var dOffsetY;
-    	var dResolutionX;
-    	var dResolutionY;
-    	var iBlockHeight;
-
     	let {iIP:iIPIndex,iScan:iScanIndex} = this.JudgeIPScanUM(dInputX, dInputY);
-
     	if(iIPIndex != undefined && iScanIndex != undefined)
     	{
-    		dOffsetX = this.mpMachinePara.aIPParaArray[iIPIndex].aScanParaArray[iScanIndex].dOffsetX;
-    		dOffsetY = this.mpMachinePara.aIPParaArray[iIPIndex].aScanParaArray[iScanIndex].dOffsetY;
-    		dResolutionX = this.mpMachinePara.aIPParaArray[iIPIndex].aScanParaArray[iScanIndex].dResolutionX;
-    		dResolutionY = this.mpMachinePara.aIPParaArray[iIPIndex].aScanParaArray[iScanIndex].dResolutionY;
-    		iBlockHeight = this.mpMachinePara.aIPParaArray[iIPIndex].aScanParaArray[iScanIndex].iBlockHeight;
+    		var dOffsetX = this.mpMachinePara.aIPParaArray[iIPIndex].aScanParaArray[iScanIndex].dOffsetX;
+    		var dOffsetY = this.mpMachinePara.aIPParaArray[iIPIndex].aScanParaArray[iScanIndex].dOffsetY;
+    		var dResolutionX = this.mpMachinePara.aIPParaArray[iIPIndex].aScanParaArray[iScanIndex].dResolutionX;
+    		var dResolutionY = this.mpMachinePara.aIPParaArray[iIPIndex].aScanParaArray[iScanIndex].dResolutionY;
+    		var iBlockHeight = this.mpMachinePara.aIPParaArray[iIPIndex].aScanParaArray[iScanIndex].iBlockHeight;
     		
-    		dOutputX = (dInputX - dOffsetX) / dResolutionX;
-    		dOutputY = Math.floor((dInputY - dOffsetY) / dResolutionY) % iBlockHeight;
-    		iBlockIndex = Math.floor(((dInputY - dOffsetY) / dResolutionY) / iBlockHeight);
+    		var dOutputX = (dInputX - dOffsetX) / dResolutionX;
+    		var dOutputY = Math.floor((dInputY - dOffsetY) / dResolutionY) % iBlockHeight;
+    		var iBlockIndex = Math.floor(((dInputY - dOffsetY) / dResolutionY) / iBlockHeight);
     		
     		return {dOutputX,dOutputY,iIPIndex,iScanIndex,iBlockIndex};
     	}
@@ -289,7 +339,7 @@ var COORDINATE_TRANSFER =  Class.extend({
     	return {};
     },
     
-    InitialBlockMapMatrix:function(iRangeLeft,iRangeBottom, iRangeRight,iRangeTop){
+    InitialBlockMapMatrix:function(iRangeLeft,iRangeBottom, iRangeRight,iRangeTop,isUM = false){
     	if(this.bmpBlockMapPara)
     		delete this.bmpBlockMapPara;
     	
@@ -297,19 +347,28 @@ var COORDINATE_TRANSFER =  Class.extend({
 
     	var iBlockMapXIndex;
     	var iBlockMapYIndex;
-    	
-    	let {dOutputX:dRangeLeft, dOutputY:dRangeBottom} = this.PanelMapCoordinateToUMCoordinate(iRangeLeft, iRangeBottom);
-    	
-    	if(dRangeLeft == undefined || dRangeBottom == undefined)
-    	{
-    		return false;
-    	}
-    	
-    	let {dOutputX:dRangeRight, dOutputY:dRangeTop} = this.PanelMapCoordinateToUMCoordinate(iRangeRight, iRangeTop);
-
-    	if(dRangeRight == undefined || dRangeTop == undefined)
-    	{
-    		return false;
+    	var dRangeLeft,dRangeBottom,dRangeRight,dRangeTop;
+    	if(isUM){
+    		dRangeLeft = iRangeLeft;
+    		dRangeBottom = iRangeBottom;
+    		dRangeRight =iRangeRight;
+    		dRangeTop = iRangeTop;
+    	}else{
+    		let {dOutputX:dLeft, dOutputY:dBottom} = this.PanelMapCoordinateToUMCoordinate(iRangeLeft, iRangeBottom);
+        	if(dLeft == undefined || dBottom == undefined)
+        	{
+        		return false;
+        	}
+        	dRangeLeft = dLeft;
+    		dRangeBottom = dBottom;
+        	
+        	let {dOutputX:dRight, dOutputY:dTop} = this.PanelMapCoordinateToUMCoordinate(iRangeRight, iRangeTop);
+        	if(dRight == undefined || dTop == undefined)
+        	{
+        		return false;
+        	}
+        	dRangeRight =dRight;
+    		dRangeTop = dTop;
     	}
     	
     	let {iIPIndex:iIPIndex_BL, iScanIndex:iScanIndex_BL, iBlockIndex:iBlockIndex_BL} = this.UMCoordinateToBlockMapCoordinate(dRangeLeft, dRangeBottom);
@@ -484,14 +543,6 @@ var COORDINATE_TRANSFER =  Class.extend({
     },
     
     GetBlockMapMatrixBlockRangeUM:function(){
-    	var iIPIndex;
-    	var iScanIndex;
-    	var iBlockIndex;
-    	var dResolutionX;
-    	var dResolutionY;
-    	var iBlockMapWidth;
-    	var iBlockMapHeight;
-    	
     	for(var i = 0; i < this.bmpBlockMapPara.iTotalBlockX; i ++)
     	{
     		for(var j = 0; j < this.bmpBlockMapPara.iTotalBlockY; j ++)
@@ -499,16 +550,16 @@ var COORDINATE_TRANSFER =  Class.extend({
     			if(this.bmpBlockMapPara.m_BlockMap[i][j] == undefined)
     				continue;
     			
-    			iIPIndex = this.bmpBlockMapPara.m_BlockMap[i][j].iIPIndex;
-    			iScanIndex = this.bmpBlockMapPara.m_BlockMap[i][j].iScanIndex;
-    			iBlockIndex = this.bmpBlockMapPara.m_BlockMap[i][j].iBlockIndex;
+    			var iIPIndex = this.bmpBlockMapPara.m_BlockMap[i][j].iIPIndex;
+    			var iScanIndex = this.bmpBlockMapPara.m_BlockMap[i][j].iScanIndex;
+    			var iBlockIndex = this.bmpBlockMapPara.m_BlockMap[i][j].iBlockIndex;
 
     			if(iIPIndex >= 0 && iIPIndex < this.mpMachinePara.iTotalIP && iScanIndex >= 0 && iScanIndex < this.mpMachinePara.iTotalScan && iBlockIndex >= 0 && iBlockIndex < this.mpMachinePara.iTotalBlock)
     			{
-    				dResolutionX = this.mpMachinePara.aIPParaArray[iIPIndex].aScanParaArray[iScanIndex].dResolutionX;
-    				dResolutionY = this.mpMachinePara.aIPParaArray[iIPIndex].aScanParaArray[iScanIndex].dResolutionY;
-    				iBlockMapWidth = this.bmpBlockMapPara.m_BlockMap[i][j].iBlockMapWidth;
-    				iBlockMapHeight = this.bmpBlockMapPara.m_BlockMap[i][j].iBlockMapHeight;
+    				var dResolutionX = this.mpMachinePara.aIPParaArray[iIPIndex].aScanParaArray[iScanIndex].dResolutionX;
+    				var dResolutionY = this.mpMachinePara.aIPParaArray[iIPIndex].aScanParaArray[iScanIndex].dResolutionY;
+    				var iBlockMapWidth = this.bmpBlockMapPara.m_BlockMap[i][j].iBlockMapWidth;
+    				var iBlockMapHeight = this.bmpBlockMapPara.m_BlockMap[i][j].iBlockMapHeight;
     				
     				this.bmpBlockMapPara.m_BlockMap[i][j].dRange_Left = this.mpMachinePara.aIPParaArray[iIPIndex].aScanParaArray[iScanIndex].dOffsetX;
     				this.bmpBlockMapPara.m_BlockMap[i][j].dRange_Bottom = this.mpMachinePara.aIPParaArray[iIPIndex].aScanParaArray[iScanIndex].dOffsetY + dResolutionY * iBlockIndex * iBlockMapHeight;
@@ -520,24 +571,92 @@ var COORDINATE_TRANSFER =  Class.extend({
     },
     
     PanelMapCoordinateToUMCoordinate: function(iInputX, iInputY){
-    	var dOutputX, dOutputY
-    	var dResolutionX;
-    	var dResolutionY;
+    	var dOutputX, dOutputY;
     	
-    	dResolutionX = this.mpMachinePara.aIPParaArray[0].aScanParaArray[0].dResolutionX;
-    	dResolutionY = this.mpMachinePara.aIPParaArray[0].aScanParaArray[0].dResolutionY;
-    	
-    	if(iInputX < 0 || iInputX >= this.pmpPanelMapPara.iPanelMapWidth || iInputY < 0 || iInputY >= this.pmpPanelMapPara.iPanelMapHeight || this.pmpPanelMapPara.dRatioX == 0 || this.pmpPanelMapPara.dRatioY == 0)
+    	if(this.pmpPanelMapPara.dRatioX == 0 || this.pmpPanelMapPara.dRatioY == 0)
     	{
     		return {};
     	}
     	else
     	{
-    		dOutputX = (iInputX - this.pmpPanelMapPara.iPanelMapWidth / 2) / this.pmpPanelMapPara.dRatioX * dResolutionX + this.pmpPanelMapPara.dPanelCenterX;
-    		dOutputY = (iInputY - this.pmpPanelMapPara.iPanelMapHeight / 2) / this.pmpPanelMapPara.dRatioY * dResolutionY + this.pmpPanelMapPara.dPanelCenterY;
+    		
+    		var dTempX = iInputX / this.pmpPanelMapPara.dRatioX + this.pmpPanelMapPara.dPanelMapLeft;
+    		var dTempY = iInputY / this.pmpPanelMapPara.dRatioY + this.pmpPanelMapPara.dPanelMapBottom;
+    		
+    		let {iIP:iIPIndex, iScan:iScanIndex} = this.JudgeIPScan_Pixel(dTempX, dTempY);
+    		if(iIPIndex == undefined || iScanIndex == undefined)
+    			return {};
+
+    		var dOffsetX = this.mpMachinePara.aIPParaArray[iIPIndex].aScanParaArray[iScanIndex].dOffsetX;
+    		var dOffsetY = this.mpMachinePara.aIPParaArray[iIPIndex].aScanParaArray[iScanIndex].dOffsetY;
+    		var dResolutionX = this.mpMachinePara.aIPParaArray[iIPIndex].aScanParaArray[iScanIndex].dResolutionX;
+    		var dResolutionY = this.mpMachinePara.aIPParaArray[iIPIndex].aScanParaArray[iScanIndex].dResolutionY;
+    		var iRange_Left = this.mpMachinePara.aIPParaArray[iIPIndex].aScanParaArray[iScanIndex].iRange_Left;
+    		var iRange_Bottom = this.mpMachinePara.aIPParaArray[iIPIndex].aScanParaArray[iScanIndex].iRange_Bottom;
+
+    		dOutputX = (dTempX - iRange_Left) * dResolutionX + dOffsetX;
+    		dOutputY = (dTempY - iRange_Bottom) * dResolutionY + dOffsetY;
+    		return {dOutputX,dOutputY};
+    	}
+    },
+    
+    UMCoordinateToPanelMapCoordinate:function(dInputX,dInputY)
+    {
+    	var dOutputX, dOutputY;
+    	let {iIP:iIPIndex, iScan:iScanIndex} = JudgeIPScan_UM(dInputX, dInputY);
+    	
+    	if(iIPIndex != undefined && iScanIndex != undefined)
+    	{
+    		var dOffsetX = this.mpMachinePara.aIPParaArray[iIPIndex].aScanParaArray[iScanIndex].dOffsetX;
+    		var dOffsetY =  this.mpMachinePara.aIPParaArray[iIPIndex].aScanParaArray[iScanIndex].dOffsetY;
+    		var dResolutionX =  this.mpMachinePara.aIPParaArray[iIPIndex].aScanParaArray[iScanIndex].dResolutionX;
+    		var dResolutionY =  this.mpMachinePara.aIPParaArray[iIPIndex].aScanParaArray[iScanIndex].dResolutionY;
+    		var iRange_Left =  this.mpMachinePara.aIPParaArray[iIPIndex].aScanParaArray[iScanIndex].iRange_Left;
+    		var iRange_Bottom =  this.mpMachinePara.aIPParaArray[iIPIndex].aScanParaArray[iScanIndex].iRange_Bottom;
+    		
+    		dOutputX = ((dInputX - dOffsetX) / dResolutionX + iRange_Left - this.pmpPanelMapPara.dPanelMapLeft) * this.pmpPanelMapPara.dRatioX;
+    		dOutputY = ((dInputY - dOffsetY) / dResolutionY + iRange_Bottom - this.pmpPanelMapPara.dPanelMapBottom) * this.pmpPanelMapPara.dRatioY;
     	}
     	
-    	return {dOutputX,dOutputY};
+    	return {dOutputX, dOutputY};
+    },
+    
+    UMCoordinateToGlassMapCoordinate:function(dInputX,dInputY)
+    {
+    	var dOutputX, dOutputY;
+    	let {iIP:iIPIndex, iScan:iScanIndex} = JudgeIPScan_UM(dInputX, dInputY, iIPIndex, iScanIndex);
+    	if(iIPIndex != undefined && iScanIndex != undefined)
+    	{
+    		var dOffsetX = this.mpMachinePara.aIPParaArray[iIPIndex].aScanParaArray[iScanIndex].dOffsetX;
+    		var dOffsetY = this.mpMachinePara.aIPParaArray[iIPIndex].aScanParaArray[iScanIndex].dOffsetY;
+    		var dResolutionX = this.mpMachinePara.aIPParaArray[iIPIndex].aScanParaArray[iScanIndex].dResolutionX;
+    		var dResolutionY = this.mpMachinePara.aIPParaArray[iIPIndex].aScanParaArray[iScanIndex].dResolutionY;
+    		var iRange_Left = this.mpMachinePara.aIPParaArray[iIPIndex].aScanParaArray[iScanIndex].iRange_Left;
+    		var iRange_Bottom = this.mpMachinePara.aIPParaArray[iIPIndex].aScanParaArray[iScanIndex].iRange_Bottom;
+    		
+    		dOutputX = ((dInputX - dOffsetX) / dResolutionX + iRange_Left) * this.gmpGlassMapPara.dRatioX;
+    		dOutputY = ((dInputY - dOffsetY) / dResolutionY + iRange_Bottom) * this.gmpGlassMapPara.dRatioY;
+    		
+    		return {dOutputX, dOutputY};
+    	}
+    	
+    	return {};
+    },
+    
+    BlockMapCoordinateToUMCoordinate:function(iInputX,iInputY,iIPIndex,iScanIndex,iBlockIndex)
+    {
+    	var dOutputX, dOutputY;
+
+    	var dOffsetX = mpMachinePara.aIPParaArray[iIPIndex].aScanParaArray[iScanIndex].dOffsetX;
+    	var dOffsetY = mpMachinePara.aIPParaArray[iIPIndex].aScanParaArray[iScanIndex].dOffsetY;
+    	var dResolutionX = mpMachinePara.aIPParaArray[iIPIndex].aScanParaArray[iScanIndex].dResolutionX;
+    	var dResolutionY = mpMachinePara.aIPParaArray[iIPIndex].aScanParaArray[iScanIndex].dResolutionY;
+    	var iBlockHeight = mpMachinePara.aIPParaArray[iIPIndex].aScanParaArray[iScanIndex].iBlockHeight;
+    	
+    	dOutputX = iInputX * dResolutionX + dOffsetX;
+    	dOutputY = (iInputY + iBlockIndex * iBlockHeight) * dResolutionY + dOffsetY;
+    	
+    	return {dOutputX, dOutputY};
     },
     
     GetTwoRectInter: function(rtA_BottomLeftX,rtA_BottomLeftY,rtA_TopRightX,rtA_TopRightY,rtB_BottomLeftX,rtB_BottomLeftY,rtB_TopRightX,rtB_TopRightY){
@@ -608,7 +727,7 @@ var COORDINATE_TRANSFER =  Class.extend({
     	return {rtInter_BottomLeftX, rtInter_BottomLeftY, rtInter_TopRightX, rtInter_TopRightY};
     },
     
-    GetRectIntersectionInfoInBlockMapMatrix:function(iRangeLeft,iRangeBottom, iRangeRight,iRangeTop){
+    GetRectIntersectionInfoInBlockMapMatrix:function(iRangeLeft,iRangeBottom, iRangeRight,iRangeTop,isUM=false){
 
     	var dBlockRangeLeft;
     	var dBlockRangeBottom;
@@ -628,21 +747,31 @@ var COORDINATE_TRANSFER =  Class.extend({
     	var iWidth;
     	var iHeight;
     	
-    	this.InitialBlockMapMatrix(iRangeLeft,iRangeBottom, iRangeRight,iRangeTop);
+    	this.InitialBlockMapMatrix(iRangeLeft,iRangeBottom, iRangeRight,iRangeTop,isUM);
     	this.GetBlockMapMatrixBlockRangeUM();
- 
-    	let {dOutputX:dRangeLeft, dOutputY:dRangeBottom} = this.PanelMapCoordinateToUMCoordinate(iRangeLeft, iRangeBottom);
     	
-    	if(dRangeLeft == undefined)
-    	{
-    		return false;
-    	}
-    	
-    	let {dOutputX:dRangeRight, dOutputY:dRangeTop} = this.PanelMapCoordinateToUMCoordinate(iRangeRight, iRangeTop);
-    	
-    	if(dRangeRight == undefined)
-    	{
-    		return false;
+    	var dRangeLeft,dRangeBottom,dRangeRight,dRangeTop;
+    	if(isUM){
+    		dRangeLeft = iRangeLeft;
+    		dRangeBottom = iRangeBottom;
+    		dRangeRight =iRangeRight;
+    		dRangeTop = iRangeTop;
+    	}else{
+    		let {dOutputX:dLeft, dOutputY:dBottom} = this.PanelMapCoordinateToUMCoordinate(iRangeLeft, iRangeBottom);
+        	if(dLeft == undefined || dBottom == undefined)
+        	{
+        		return false;
+        	}
+        	dRangeLeft = dLeft;
+    		dRangeBottom = dBottom;
+        	
+        	let {dOutputX:dRight, dOutputY:dTop} = this.PanelMapCoordinateToUMCoordinate(iRangeRight, iRangeTop);
+        	if(dRight == undefined || dTop == undefined)
+        	{
+        		return false;
+        	}
+        	dRangeRight =dRight;
+    		dRangeTop = dTop;
     	}
     	
     	for(var i = 0; i < this.bmpBlockMapPara.iTotalBlockX; i ++)
@@ -688,8 +817,97 @@ var COORDINATE_TRANSFER =  Class.extend({
     	}
     	
     	return true;
-    }
+    },
     
+    UMCoordinateToHawkmapCoordinate:function(dInputX,dInputY){
+    	var iOutputX = 0, iOutputY = 0;
+    	
+    	for(var i = 0; i < this.bmpBlockMapPara.iTotalBlockX; i ++)
+    	{
+    		for(var j = 0; j < this.bmpBlockMapPara.iTotalBlockY; j ++)
+    		{
+    			if(this.bmpBlockMapPara.m_BlockMap[i][j] == undefined)
+    				continue;
+    			if(this.bmpBlockMapPara.m_BlockMap[i][j].bHasIntersection == false)
+    				continue;
+    			
+    			var dBlockRangeLeft = this.bmpBlockMapPara.m_BlockMap[i][j].dRange_Left;
+    			var dBlockRangeBottom = this.bmpBlockMapPara.m_BlockMap[i][j].dRange_Bottom;
+    			var dBlockRangeRight = this.bmpBlockMapPara.m_BlockMap[i][j].dRange_Right;
+    			var dBlockRangeTop = this.bmpBlockMapPara.m_BlockMap[i][j].dRange_Top;
+    			
+    			if(dInputX < dBlockRangeLeft || dInputX > dBlockRangeRight || 
+    					dInputY < dBlockRangeBottom || dInputY >  dBlockRangeTop){
+    				iOutputY += this.bmpBlockMapPara.m_BlockMap[i][j].iInterSectionHeight;
+    				continue;
+    			}
+    			
+    			var iIPIndex = this.bmpBlockMapPara.m_BlockMap[i][j].iIPIndex;
+				var iScanIndex = this.bmpBlockMapPara.m_BlockMap[i][j].iScanIndex;
+				var dResolutionX = this.mpMachinePara.aIPParaArray[iIPIndex].aScanParaArray[iScanIndex].dResolutionX;
+				var dResolutionY = this.mpMachinePara.aIPParaArray[iIPIndex].aScanParaArray[iScanIndex].dResolutionY;
+    			
+    			iOutputX += (dInputX - dBlockRangeLeft) / dResolutionX + 0.5;
+    			iOutputY += (dInputY - dBlockRangeBottom) / dResolutionY + 0.5;
+    			iOutputX -= this.bmpBlockMapPara.m_BlockMap[i][j].iInterSectionStartX;
+    			iOutputY -= this.bmpBlockMapPara.m_BlockMap[i][j].iInterSectionStartY;
+    			
+    			return {iOutputX, iOutputY};
+    			
+    		}
+    		iOutputY = 0;
+    		iOutputX += this.bmpBlockMapPara.m_BlockMap[i][0].iInterSectionWidth;
+    	}
+    	
+    	return {};
+    },
+    
+    HawkmapCoordinateToUMCoordinate:function(iInputX,iInputY){
+    	var dOutputX, dOutputY;
+    	var iStartX = 0,iStartY = 0;
+    	for(var i = 0; i < this.bmpBlockMapPara.iTotalBlockX; i ++)
+    	{
+    		iStartX += this.bmpBlockMapPara.m_BlockMap[i][0].iInterSectionWidth;
+    		for(var j = 0; j < this.bmpBlockMapPara.iTotalBlockY; j ++)
+    		{
+    			if(this.bmpBlockMapPara.m_BlockMap[i][j] == undefined)
+    				continue;
+    			if(this.bmpBlockMapPara.m_BlockMap[i][j].bHasIntersection == false)
+    				continue;
+    			iStartY += this.bmpBlockMapPara.m_BlockMap[i][j].iInterSectionHeight;
+    			
+    			if(iInputX > iStartX || iInputY > iStartY)
+    				continue;
+    			
+    			var iInterSectionStartX = this.bmpBlockMapPara.m_BlockMap[i][j].iInterSectionStartX;
+    			var iInterSectionStartY = this.bmpBlockMapPara.m_BlockMap[i][j].iInterSectionStartY;
+    			var iInterSectionWidth = this.bmpBlockMapPara.m_BlockMap[i][j].iInterSectionWidth;
+    			var iInterSectionHeight = this.bmpBlockMapPara.m_BlockMap[i][j].iInterSectionHeight;
+
+    			var dBlockRangeLeft = this.bmpBlockMapPara.m_BlockMap[i][j].dRange_Left;
+    			var dBlockRangeBottom = this.bmpBlockMapPara.m_BlockMap[i][j].dRange_Bottom;
+    			var dBlockRangeRight = this.bmpBlockMapPara.m_BlockMap[i][j].dRange_Right;
+    			var dBlockRangeTop = this.bmpBlockMapPara.m_BlockMap[i][j].dRange_Top;
+    			
+    			var iIPIndex = this.bmpBlockMapPara.m_BlockMap[i][j].iIPIndex;
+				var iScanIndex = this.bmpBlockMapPara.m_BlockMap[i][j].iScanIndex;
+				var dResolutionX = this.mpMachinePara.aIPParaArray[iIPIndex].aScanParaArray[iScanIndex].dResolutionX;
+				var dResolutionY = this.mpMachinePara.aIPParaArray[iIPIndex].aScanParaArray[iScanIndex].dResolutionY;
+    			
+				dOutputX = iInterSectionStartX + iInterSectionWidth -(iStartX - iInputX);
+    			dOutputX = dOutputX * dResolutionX + dBlockRangeLeft;
+    			
+    			dOutputY = iInterSectionStartY + iInterSectionHeight -(iStartY - iInputY);
+    			dOutputY = dOutputY * dResolutionY + dBlockRangeBottom;
+
+    			return {dOutputX, dOutputY};
+    			
+    		}
+    		
+    	}
+    	
+    	return {};
+    },
     
 });
 

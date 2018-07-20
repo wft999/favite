@@ -241,7 +241,7 @@ var Hawkeye = fabric.util.createClass(fabric.Object, {
 	_render: function(ctx) {
 		//this.width = 50/this.canvas.getZoom(),
 		//this.height = 50/this.canvas.getZoom(),
-		
+/*		
 		ctx.beginPath(); 
 		ctx.lineWidth=  1/(this.canvas.getZoom()*this.scaleY);
 		ctx.strokeStyle="yellow"; 
@@ -253,13 +253,14 @@ var Hawkeye = fabric.util.createClass(fabric.Object, {
 		ctx.lineWidth=  1/(this.canvas.getZoom()*this.scaleX);
 		ctx.moveTo(0,-this.height/2);
 		ctx.lineTo(0,this.height/2); 
-		ctx.stroke(); 
+		ctx.stroke(); */
 
 		ctx.fillStyle = '#4FC3F7';
 		ctx.globalAlpha = 0.3;
-		ctx.beginPath();
-		ctx.arc(0,0,this.width/2,0,Math.PI * 2, false);
-		ctx.fill();
+		//ctx.beginPath();
+		ctx.fillRect(-this.width/2,-this.height/2,this.width,this.height);
+		//ctx.arc(0,0,this.width/2,0,Math.PI * 2, false);
+		//ctx.fill();
     }
   });
 
