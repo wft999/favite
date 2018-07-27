@@ -14,14 +14,17 @@
                 <div class="oe_clear"/>
                 <group>
                 	<group>
-                		<field name="display_name" />
-                    	<field name="PanelCenter" />
-                        <field name="GolbalToleranceRegular" />
-                    	<field name="GolbalToleranceUnregular"/>
+                		<field name="display_name" invisible="1" />
+                        <field name="GolbalToleranceRegularX" />
+                        <field name="GolbalToleranceRegularY" />
+                    	<field name="GolbalToleranceUnregularX"/>
+                    	<field name="GolbalToleranceUnregularY"/>
                 	</group>
                 	<group>
-                    	<field name="GolbalIndentRegular"/>
-                    	<field name="GolbalIndentUnregular"/>
+                    	<field name="GolbalIndentRegularX"/>
+                    	<field name="GolbalIndentRegularY"/>
+                    	<field name="GolbalIndentUnregularX"/>
+                    	<field name="GolbalIndentUnregularY"/>
                     	<field name="GlassToGlassMode"/>
                    		<field name="NeglectInspIfNoMarkResult"/>
                  	</group>

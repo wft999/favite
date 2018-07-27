@@ -38,3 +38,7 @@
     color: #333333; 
     font-weight: bold; 
 }
+
+.o_web_client > .o_main .o_sub_menu .o_sub_menu_content .oe_secondary_submenu {
+    line-height: normal;
+}

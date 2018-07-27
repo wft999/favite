@@ -51,10 +51,11 @@ var Goa = fabric.util.createClass(fabric.Object, {
 	originX:"center",
 	originY:"center",
 	//hoverCursor:"move",
-	lockMovementX:true,
-	lockMovementY:true,
-	hasControls: false,
+	//lockMovementX:true,
+	//lockMovementY:true,
+	//hasControls: false,
 	
+	D1G1:0,
 	period:20,
 	number:5,
 	width:100,
@@ -63,20 +64,17 @@ var Goa = fabric.util.createClass(fabric.Object, {
     	this.callSuper('initialize', options);
     	this.polyline = options.polyline || null;
     	this.padType = options.padType || null;
+    	this.period = options.period || 20;
+    	this.height = this.period * 5;
     },
 
 	_render: function(ctx) {	
 		//this.strokeWidth = Math.round(1/this.canvas.getZoom()*this.scaleX*this.scaleY);
 		ctx.strokeStyle="red"; 
+		
 		ctx.lineWidth= 1/(this.canvas.getZoom()*this.scaleY);
 		
-		ctx.beginPath(); 
-		ctx.moveTo(-this.width/2,-this.height/2);
-		ctx.lineTo(-this.width/2,this.height/2);
-		ctx.stroke();
 
-		
-		ctx.lineWidth= 1/(this.canvas.getZoom()*this.scaleY);
 		ctx.beginPath(); 
 		ctx.moveTo(-this.width/2,-this.height/2);
 		ctx.lineTo(this.width/2,-this.height/2);
@@ -95,6 +93,11 @@ var Goa = fabric.util.createClass(fabric.Object, {
 		ctx.beginPath(); 
 		ctx.moveTo(-this.width/2,-this.height/2+i*this.period);
 		ctx.lineTo(this.width/2,-this.height/2+i*this.period);
+		ctx.stroke();
+		
+		ctx.beginPath(); 
+		ctx.moveTo(-this.width/2,-this.height/2);
+		ctx.lineTo(-this.width/2,-this.height/2+i*this.period);
 		ctx.stroke();
 		
     },

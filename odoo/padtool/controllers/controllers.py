@@ -13,26 +13,27 @@ class Padtool(http.Controller):
     def get_image(self,glass_name,width,height,strBlocks, **k):
         root = odoo.tools.config['glass_root_path']
         blocks = json.loads(strBlocks)
-        dest = Image.new('L', (width,height))
-        
+         
+        dest = Image.new('L', (width,height))   
         left = 0
-        top = 0
-        for bx in blocks:
-            if len(bx) == 0: 
-                continue
-            for by in bx:
-                if by == bx[0]:
-                    top = height
-                    
-                top -= by['iInterSectionHeight'];
-                imgFile = '%s/%s/JpegFile/IP%d/AoiL_IP%d_scan%d_block%d.jpg' % (root,glass_name,by['iIPIndex']+1,by['iIPIndex'],by['iScanIndex'],by['iBlockIndex'])
+        top = 0 
+        for x in range(len(blocks)):
+            for y in range(len(blocks[x])-1,-1,-1):
+                b = blocks[x][y]    
+                if b is None or b['bHasIntersection'] == False:
+                    continue;
+                
+                imgFile = '%s/%s/JpegFile/IP%d/AoiL_IP%d_scan%d_block%d.jpg' % (root,glass_name,b['iIPIndex']+1,b['iIPIndex'],b['iScanIndex'],b['iBlockIndex'])
                 with Image.open(imgFile) as im:
                     im = im.transpose(Image.FLIP_TOP_BOTTOM)
-                    region = im.crop((by['iInterSectionStartX'] ,im.height-(by['iInterSectionStartY']+by['iInterSectionHeight']),by['iInterSectionStartX']+ by['iInterSectionWidth'], im.height-by['iInterSectionStartY']))
+                    region = im.crop((b['iInterSectionStartX'] ,im.height-(b['iInterSectionStartY']+b['iInterSectionHeight']),b['iInterSectionStartX']+ b['iInterSectionWidth'], im.height-b['iInterSectionStartY']))
                     dest.paste(region, (left,top))
-                      
-            left += bx[0]['iInterSectionWidth'];
-                  
+                    if y == 0:
+                        left += region.width
+                        top = 0
+                    else:
+                        top += region.height
+
         output = io.BytesIO()
         dest.save(output, format="JPEG")
         response = http.send_file(output,filename="imgname.jpg")  

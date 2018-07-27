@@ -69,8 +69,9 @@ class Http(models.AbstractModel):
 
                                 glass[dir] = {'id':gmenu.id,'panel':[]}
                             continue
-                                
-                        if re.match(r'Panel\d$', sec):
+                        elif sec == 'GLASS_INFORMATION':
+                            pass      
+                        else:
                             pname = sec
                             if name == 'panel_map' and os.path.isfile(root + '/' + dir+'/'+pname+'/'+value):
                                 parent = glass[dir]['id']
