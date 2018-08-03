@@ -27,7 +27,12 @@ var Hawkmap = Widget.extend({
     },
 
     start: function(){
-    	this.map  = new fabric.Canvas('hawk',{hoverCursor:'default',stopContextMenu:true});
+    	this.map  = new fabric.Canvas('hawk',{
+    		hoverCursor:'default',
+    		stopContextMenu:true,
+    		enableRetinaScaling:true,
+    		imageSmoothingEnabled:false
+    		});
     	this.map.on('object:moving',_.debounce(this._onObjectMoving.bind(this), 100));
     	this.map.on('object:modified',this._onObjectModified.bind(this));
     	this.map.on('mouse:move',_.debounce(this._onMouseMove.bind(this), 100));    		
@@ -38,6 +43,7 @@ var Hawkmap = Widget.extend({
 		this.map.on('selection:created',this._onObjectSelect.bind(this));
 		
 		//setTimeout(this._animate.bind(this), 500);
+		
     },
     
     showImage: function(){
@@ -79,6 +85,9 @@ var Hawkmap = Widget.extend({
     			return;
     		}
     		
+    		img.filters.push(new fabric.Image.filters.Brightness());
+    		img.applyFilters();
+    		
     		self.image = img;
         	self.map.clear();
         	
@@ -87,6 +96,9 @@ var Hawkmap = Widget.extend({
     		self.map.setZoom(zoom);
     		self.map.setDimensions({width:img.width*zoom,height:img.height*zoom});
     		self.map.add(img.set({hasControls:false,lockMovementX:true,lockMovementY:true,selectable:false,}));
+    		
+    		self.$(".canvas-map")[0].style.width = 1+self.map.width + 'px';
+    		self.$(".canvas-map")[0].style.height = 1+self.map.height + 'px';
 
     		self.eyeLeft = left;
     		self.eyeTop = top;
@@ -120,6 +132,8 @@ var Hawkmap = Widget.extend({
                 			});
             			}
             		}
+            		
+            		console.log("x:"+((points[0].ux+points[1].ux)/2)+" y:"+((points[0].uy+points[1].uy)/2) + "\n");
 
             		polyline.origin = obj;
             		obj.hawkeye = polyline;
@@ -275,10 +289,13 @@ var Hawkmap = Widget.extend({
     	this.map.startPointer = opt.pointer;
     },
 	_onMouseMove:function(opt){
-		var zoom = this.map.getZoom();
-		var x = opt.e.offsetX;
-		var y = opt.e.offsetY;
-		$(".map-info").text("image(x:"+Math.round(x/zoom)+",y:"+Math.round(y/zoom)+") window(x:"+x+",y:"+y+")");
+		if(this.image){
+			var zoom = this.map.getZoom();
+			var x = opt.e.offsetX;
+			var y = opt.e.offsetY;
+			let {dOutputX:ux,dOutputY:uy} = this.parent.coordinate.HawkmapCoordinateToUMCoordinate(x/zoom,this.image.height-y/zoom);
+			$(".map-info").text("image(x:"+Math.round(x/zoom)+",y:"+Math.round(y/zoom)+") window(x:"+x+",y:"+y+") um(x:"+ux+',y:'+uy);
+		}
 		
     	opt.e.stopPropagation();
         opt.e.preventDefault();
@@ -287,6 +304,29 @@ var Hawkmap = Widget.extend({
 	_onMouseOut:function(opt){
 		$(".map-info").text("");
 	},
+	
+	_zoom:function(delta,x,y){
+		var zoom = this.map.getZoom();
+		var x1 = x / zoom;
+   	 	var y1 = y / zoom;
+		
+   	 	zoom = zoom + delta;
+   	 	zoom = Math.floor(zoom*10)/10;
+   	 	if (zoom > 6) zoom = 6;
+   	 	if (zoom <= this.minZoom) zoom = this.minZoom;
+		
+   	 	var div = this.$('div.canvas-map').length? this.$('div.canvas-map'): this.$el;
+		
+   	 	x = x1 * zoom - (x - div.scrollLeft());
+   	 	y = y1 * zoom - (y - div.scrollTop());
+		
+   	 	this.map.setZoom(zoom);
+   	 	this.map.setDimensions({width:this.image.width*zoom,height:this.image.height*zoom});
+		//this.image.scale(zoom);
+
+   	 	div.scrollTop(y);
+   	 	div.scrollLeft(x);
+    },
     
     _onMouseUp:function(opt){
     	var needUpdateHawk = false;
@@ -296,25 +336,9 @@ var Hawkmap = Widget.extend({
 		
     	if(!_isDrawRect && (this.map.hoverCursor == 'zoom-in' || this.map.hoverCursor == 'zoom-out')){
     		var delta = this.map.hoverCursor == 'zoom-in'?0.2:-0.2;
-    		var x = opt.e.offsetX / zoom;
-    		var y = opt.e.offsetY / zoom;
-    		
-    		zoom = zoom + delta;
-    		zoom = Math.floor(zoom*10)/10;
-    		if (zoom > 1.2) zoom = 1.2;
-    		if (zoom <= this.minZoom) zoom = this.minZoom;
-    		
-    		x = x * zoom - (opt.e.offsetX -div.scrollLeft());
-    		y = y * zoom - (opt.e.offsetY-div.scrollTop());
-    		var div = this.$('div.canvas-map').length? this.$('div.canvas-map'): this.$el;
-    		div.scrollTop(y);
-    		div.scrollLeft(x);
-    		
-    		this.map.setZoom(zoom);
-    		this.map.setDimensions({width:this.image.width*zoom,height:this.image.height*zoom});
-    		
+    		this._zoom(delta,opt.e.offsetX,opt.e.offsetY);
     		opt.e.preventDefault();
-    		opt.e.stopPropagation();
+     		opt.e.stopPropagation();
     	}else if(!_isDrawRect && this.map.hoverCursor == 'paste' && this.pad.pasteObj && this.pad.pasteObj.padType == this.pad.curType){
     		var points = this.pad.pasteObj.polyline.points;
     		

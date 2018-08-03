@@ -23,12 +23,12 @@
                                         <label string="Region Setting"/>
                                         <div class="content-group">
                                             <div class="mt16 row">
-                                                <label  string="height:" class="col-xs-3 col-md-3 o_light_label"/>
-                                                <field name="region_height" class="oe_inline" required="1"/><span>um</span>
+                                                <label  string="height(um):" class="col-xs-3 col-md-3 o_light_label"/>
+                                                <field name="region_height" class="oe_inline" required="1"/>
                                             </div>
                                             <div class="mt16 row">
-                                                <label  string="overlap:" class="col-xs-3 col-md-3 o_light_label"/>
-                                                <field name="region_overlap" class="oe_inline" required="1"/><span>um</span>
+                                                <label  string="overlap(um):" class="col-xs-3 col-md-3 o_light_label"/>
+                                                <field name="region_overlap" class="oe_inline" required="1"/>
                                             </div>
                                         </div>
                                     </div>
@@ -39,14 +39,12 @@
                                         <label string="hawkeye Setting"/>
                                         <div class="content-group">
                                             <div class="mt16 row">
-                                                <label  string="width:" class="col-xs-3 col-md-3 o_light_label"/>
+                                                <label  string="width(px):" class="col-xs-3 col-md-3 o_light_label"/>
                                                 <field name="hawk_width" class="oe_inline" required="1"/>  
-                                                <span>px</span>
                                             </div>
                                             <div class="mt16 row">
-                                                <label  string="height:" class="col-xs-3 col-md-3 o_light_label"/>
+                                                <label  string="height(px):" class="col-xs-3 col-md-3 o_light_label"/>
                                                 <field name="hawk_height" class="oe_inline" required="1"/>
-												<span>px</span>
                                             </div>
                                         </div>
                                     </div>

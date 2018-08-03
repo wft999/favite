@@ -29,18 +29,23 @@ class Pad(models.TransientModel):
     
     name = fields.Char()
 
-    GolbalToleranceRegularX = fields.Integer()
-    GolbalToleranceRegularY = fields.Integer()
-    GolbalToleranceUnregularX = fields.Integer()
-    GolbalToleranceUnregularY = fields.Integer()
-    GolbalIndentRegularX = fields.Float()
-    GolbalIndentRegularY = fields.Float()
-    GolbalIndentUnregularX = fields.Float()
-    GolbalIndentUnregularY = fields.Float()
+    GolbalToleranceRegularX = fields.Integer(string="ToleranceRegularX")
+    GolbalToleranceRegularY = fields.Integer(string="ToleranceRegularY")
+    GolbalToleranceUnregularX = fields.Integer(string="ToleranceUnregularX")
+    GolbalToleranceUnregularY = fields.Integer(string="ToleranceUnregularY")
+    GolbalIndentRegularX = fields.Float(string = "IndentRegularX(um)")
+    GolbalIndentRegularY = fields.Float(string = "IndentRegularY(um)")
+    GolbalIndentUnregularX = fields.Float(string = "IndentUnregularX(um)")
+    GolbalIndentUnregularY = fields.Float(string = "IndentUnregularX(um)")
     
-    GlassToGlassMode = fields.Integer()
-    NeglectInspIfNoMarkResult = fields.Integer()
+    GlassToGlassMode  = fields.Selection([(0, 'panel to panel'), (1, 'glass to glass'), (2, 'glass to golden'),], string='PadMode', required=True, default=0)
+    NeglectInspIfNoMarkResult = fields.Integer(string="NeglectInspIfNoMarkResult")
     
+    BMMode = fields.Boolean(string='BMMode')
+    BMPeriodX0 = fields.Float(string = "BM.PeriodX0(um)")
+    BMPeriodY0 = fields.Float(string = "BM.PeriodY0(um)")
+    BMPeriodX1 = fields.Float(string = "BM.PeriodX1(um)")
+    BMPeriodY1 = fields.Float(string = "BM.PeriodY1(um)")
     
     @api.model
     def default_get(self, fields):
@@ -64,8 +69,14 @@ class Pad(models.TransientModel):
                 GolbalIndentUnregularX = 50,
                 GolbalIndentUnregularY = 50,
     
-                GlassToGlassMode = 0,
+                GlassToGlassMode  = 0,
                 NeglectInspIfNoMarkResult = 0,
+                
+                BMMode = False,
+                BMPeriodX0 = 0,
+                BMPeriodY0 = 0,
+                BMPeriodX1 = 0,
+                BMPeriodY1 = 0,
             )
         else:
             parConf = ConfigParser.ConfigParser()
@@ -84,8 +95,14 @@ class Pad(models.TransientModel):
                 GolbalIndentRegularY = float(parConf['OPT']['GolbalIndentRegularY']),
                 GolbalIndentUnregularX = float(parConf['OPT']['GolbalIndentUnregularX']),
                 GolbalIndentUnregularY = float(parConf['OPT']['GolbalIndentUnregularY']),
-                GlassToGlassMode = int(parConf['OPT']['GlassToGlassMode']),
+                GlassToGlassMode  = int(parConf['OPT']['GlassToGlassMode']),
                 NeglectInspIfNoMarkResult = int(parConf['OPT']['NeglectInspIfNoMarkResult']),
+                
+                BMMode = int(parConf['OPT']['BMMode']),
+                BMPeriodX0 = float(parConf['OPT']['BMPeriodX0']),
+                BMPeriodY0 = float(parConf['OPT']['BMPeriodY0']),
+                BMPeriodX1 = float(parConf['OPT']['BMPeriodX1']),
+                BMPeriodY1 = float(parConf['OPT']['BMPeriodY1']),
             )
 
         return res
@@ -109,8 +126,14 @@ class Pad(models.TransientModel):
         strParameter += 'GolbalIndentRegularY = %f\n' % values.get('GolbalIndentRegularY',self.GolbalIndentRegularY)
         strParameter += 'GolbalIndentUnregularX = %f\n' % values.get('GolbalIndentUnregularX',self.GolbalIndentUnregularX)
         strParameter += 'GolbalIndentUnregularY = %f\n' % values.get('GolbalIndentUnregularY',self.GolbalIndentUnregularY)
-        strParameter += 'GlassToGlassMode = %d\n' % values.get('GlassToGlassMode',self.GlassToGlassMode)
+        strParameter += 'GlassToGlassMode  = %d\n' % values.get('GlassToGlassMode',self.GlassToGlassMode)
         strParameter += 'NeglectInspIfNoMarkResult = %d\n' % values.get('NeglectInspIfNoMarkResult',self.NeglectInspIfNoMarkResult)
+        
+        strParameter += 'BMMode  = %d\n' % values.get('BmMode',self.BMMode)
+        strParameter += 'BMPeriodX0 = %f\n' % values.get('BMPeriodX0',self.BMPeriodX0)
+        strParameter += 'BMPeriodY0 = %f\n' % values.get('BMPeriodY0',self.BMPeriodY0)
+        strParameter += 'BMPeriodX1 = %f\n' % values.get('BMPeriodX1',self.BMPeriodX1)
+        strParameter += 'BMPeriodY1 = %f\n' % values.get('BMPeriodY1',self.BMPeriodY1)
         with open(parFile, 'w') as f:
             f.write( strParameter )
 
@@ -137,6 +160,12 @@ class Pad(models.TransientModel):
         strParameter += 'GolbalIndentUnregularY = %f\n' % values.get('GolbalIndentUnregularY',self.GolbalIndentUnregularY)
         strParameter += 'GlassToGlassMode = %d\n' % values.get('GlassToGlassMode',self.GlassToGlassMode)
         strParameter += 'NeglectInspIfNoMarkResult = %d\n' % values.get('NeglectInspIfNoMarkResult',self.NeglectInspIfNoMarkResult)
+        
+        strParameter += 'BMMode  = %d\n' % values.get('BMMode',self.BMMode)
+        strParameter += 'BMPeriodX0 = %f\n' % values.get('BMPeriodX0',self.BMPeriodX0)
+        strParameter += 'BMPeriodY0 = %f\n' % values.get('BMPeriodY0',self.BMPeriodY0)
+        strParameter += 'BMPeriodX1 = %f\n' % values.get('BMPeriodX1',self.BMPeriodX1)
+        strParameter += 'BMPeriodY1 = %f\n' % values.get('BMPeriodY1',self.BMPeriodY1)
         with open(parFile, 'w') as f:
             f.write( strParameter )
             
@@ -220,7 +249,7 @@ class Pad(models.TransientModel):
         
         cameraConf = ConfigParser.RawConfigParser()
         with open(cameraFile, 'r') as f:
-            cameraConf.read_string("[DEFAULT]\r\n" + f.read())
+            cameraConf.read_string("[general]\r\n" + f.read())
             
         globalConf = request.env['res.config.settings'].get_values();
         return {
@@ -255,14 +284,17 @@ class Pad(models.TransientModel):
             strParameter += 'GolbalIndentUnregular = %s,%s\n' % (parConf['OPT']['GolbalIndentUnregularX'],parConf['OPT']['GolbalIndentUnregularY'])
             strParameter += 'GlassToGlassMode = %s\n' % parConf['OPT']['GlassToGlassMode']
             strParameter += 'NeglectInspIfNoMarkResult = %s\n' % parConf['OPT']['NeglectInspIfNoMarkResult']
+            
+            strParameter += 'BMMode  = %d\n' % int(parConf['OPT']['BMMode'])
+            strParameter += 'BMPeriodX0 = %s\n' % parConf['OPT']['BMPeriodX0']
+            strParameter += 'BMPeriodY0 = %s\n' % parConf['OPT']['BMPeriodY0']
+            strParameter += 'BMPeriodX1 = %s\n' % parConf['OPT']['BMPeriodX1']
+            strParameter += 'BMPeriodY1 = %s\n' % parConf['OPT']['BMPeriodY1']
 
         
         strFrame = ''
         strRegion = ''
-        strMainMark = ''
-        mainMarkStartx = 0
-        region_list = []
-        
+
         strPad_Filterpos = ''
         Pad_Filterpos_Number = 0
         
@@ -274,8 +306,58 @@ class Pad(models.TransientModel):
         
         width = 0
         max_height = 0
+        subMarkStartx = 0;
+        strSubMark = 'SubMarkNumber = '+str(len(pad['pMarkRegionArray']))+'\n'
+        region_list = []
+        for obj in pad['pMarkRegionArray']:
+            height = 0     
+            block_list = []
+            width += obj['blocks'][0]['iInterSectionWidth']
+            for block in obj['blocks']:
+                imgFile = root + '/'+ glassName+'/JpegFile/IP'+str(block['iIPIndex']+1)+'/'+'AoiL_IP'+str(block['iIPIndex'])+'_scan'+str(block['iScanIndex'])+'_block'+str(block['iBlockIndex'])+'.jpg'
+                with Image.open(imgFile) as im:
+                    left = block['iInterSectionStartX']
+                    right = block['iInterSectionStartX'] + block['iInterSectionWidth']
+                    upper = im.height - (block['iInterSectionStartY'] + block['iInterSectionHeight'])
+                    lower = im.height - block['iInterSectionStartY']
+                    im = im.transpose(Image.FLIP_TOP_BOTTOM)
+                    region = im.crop((left ,upper, right, lower))
+                    block_list.append(region)
+                    height += (lower-upper)
+                        
+            strSubMark += 'SubMark'+str(len(region_list))+'.size = '+ str(obj['iSizeWidth']) +','+str(obj['iSizeHeight'])+'\n'
+            strSubMark += 'SubMark'+str(len(region_list))+'.startx = '+ str(subMarkStartx) + '\n'
+            strSubMark += 'SubMark'+str(len(region_list))+'.pos = '+str(obj['dPositionX']-pad['dPanelCenterX'])+','+str(obj['dPositionY']-pad['dPanelCenterY'])+'\n'
+            strSubMark += 'SubMark'+str(len(region_list))+'.ipindex = '+str(obj['iIPIndex'])+'\n'
+            strSubMark += 'SubMark'+str(len(region_list))+'.scanindex = '+str(obj['iScanIndex'])+'\n'
+            strSubMark += 'SubMark'+str(len(region_list))+'.horizontal = '+str(obj['iMarkDirectionType'])+'\n'
+            
+            subMarkStartx += obj['iSizeWidth']    
+            max_height = height if height > max_height else max_height   
+            region_list.append(block_list)
+            
+        if len(region_list):
+            markFile = root + '/'+glassName +'/'+ panelName +'/subMark.bmp'
+            mark = Image.new('L', (width,max_height))
+            left = 0
+            for blocks in region_list:
+                lower = max_height
+                for region in blocks:
+                    upper = lower - region.size[1]
+                    right = left+region.size[0]
+                    mark.paste(region, (left ,upper, right, lower))
+                    
+                    lower = max_height - region.size[1]
+                left += blocks[0].size[0]
+            mark.save(markFile)
+                
+        width = 0
+        max_height = 0
         innerFrame = None
-        outrtFrame = None
+        outrtFrame = None   
+        strMainMark = ''
+        mainMarkStartx = 0    
+        region_list = []
         for obj in pad['objs']:
             if obj['padType'] == 'frame':
                 if innerFrame == None:
@@ -297,13 +379,13 @@ class Pad(models.TransientModel):
             elif obj['padType'] == 'uninspectZone' and len(obj['points'])>2:
                 strPad_Filter += 'Pad.Filter'+str(Pad_Filter_Number)+' = '
                 for p in obj['points']:
-                    strPad_Filter += str(p['ux']--pad['dPanelCenterX'])+','+str(p['uy']--pad['dPanelCenterY'])+';'
+                    strPad_Filter += str(p['ux']-pad['dPanelCenterX'])+','+str(p['uy']-pad['dPanelCenterY'])+';'
                 strPad_Filter += '\n'        
                 Pad_Filter_Number += 1
             elif obj['padType'] == 'inspectZone' and len(obj['points'])>1:
                 strPad_Inspect += 'Pad.Inspect'+str(Pad_Inspect_Number)+' = '
                 for p in obj['points']:
-                    strPad_Inspect += str(p['ux']--pad['dPanelCenterX'])+','+str(p['uy']--pad['dPanelCenterY'])+';'
+                    strPad_Inspect += str(p['ux']-pad['dPanelCenterX'])+','+str(p['uy']-pad['dPanelCenterY'])+';'
                 strPad_Inspect += '\n' 
                 strPad_Inspect += 'Pad.Inspect%d.Period = %f,%f\n' % (Pad_Inspect_Number,obj['periodX'],obj['periodY'])
                 strPad_Inspect += 'Pad.Inspect%d.D1G1 = %d\n' % (Pad_Inspect_Number,obj['D1G1'])
@@ -316,7 +398,7 @@ class Pad(models.TransientModel):
                 for block in obj['blocks']:
                     imgFile = root + '/'+ glassName+'/JpegFile/IP'+str(block['iIPIndex']+1)+'/'+'AoiL_IP'+str(block['iIPIndex'])+'_scan'+str(block['iScanIndex'])+'_block'+str(block['iBlockIndex'])+'.jpg'
                     with Image.open(imgFile) as im:
-                        left = block['iInterSectionStartX'];
+                        left = block['iInterSectionStartX']
                         right = block['iInterSectionStartX'] + block['iInterSectionWidth']
                         upper = im.height - (block['iInterSectionStartY'] + block['iInterSectionHeight'])
                         lower = im.height - block['iInterSectionStartY']
@@ -327,7 +409,7 @@ class Pad(models.TransientModel):
                         
                 strMainMark += 'MainMark'+str(len(region_list))+'.size = '+ str(block['iInterSectionWidth']) +','+str(height)+'\n'
                 strMainMark += 'MainMark'+str(len(region_list))+'.startx = '+ str(mainMarkStartx) + '\n'
-                strMainMark += 'MainMark'+str(len(region_list))+'.pos = '+str(obj['points'][0]['ux']-pad['dPanelCenterX'])+','+str(obj['points'][0]['uy']-pad['dPanelCenterY'])+'\n'
+                strMainMark += 'MainMark'+str(len(region_list))+'.pos = '+str((obj['points'][0]['ux'] + obj['points'][1]['ux'])/2-pad['dPanelCenterX'])+','+str((obj['points'][0]['uy']+obj['points'][1]['uy'])/2-pad['dPanelCenterY'])+'\n'
                 strMainMark += 'MainMark'+str(len(region_list))+'.ipindex = '+str(block['iIPIndex'])+'\n'
                 strMainMark += 'MainMark'+str(len(region_list))+'.scanindex = '+str(block['iScanIndex'])+'\n'
                 
@@ -338,44 +420,60 @@ class Pad(models.TransientModel):
         if innerFrame is not None  and outrtFrame is not None:
             frameLeft0 = outrtFrame['points'][0]['ux']-pad['dPanelCenterX']
             frameRight0 = innerFrame['points'][0]['ux']-pad['dPanelCenterX']
-            frameTop0 = innerFrame['points'][1]['uy']+pad['region_overlap']-pad['dPanelCenterY']
-            frameBottom0 = innerFrame['points'][0]['uy']+pad['region_overlap']-pad['dPanelCenterY']
+            frameTop0 = innerFrame['points'][1]['uy']-pad['dPanelCenterY'] + pad['region_overlap']
+            frameBottom0 = innerFrame['points'][0]['uy']-pad['dPanelCenterY'] - pad['region_overlap']
             strFrame += 'PadFrameNum = 4\n'
             strFrame += 'PadFrame0.iDirection = 0\n'
-            strFrame += 'PadFrame0.postion_topleft = '+str(frameLeft0)+','+str(frameTop0)+'\n'
-            strFrame += 'PadFrame0.postion_topright = '+str(frameRight0)+','+str(frameTop0)+'\n'
-            strFrame += 'PadFrame0.postion_bottomleft = '+str(frameLeft0)+','+str(frameBottom0)+'\n'
-            strFrame += 'PadFrame0.postion_bottomright = '+str(frameRight0)+','+str(frameBottom0)+'\n'
+            #strFrame += 'PadFrame0.postion_topleft = '+str(frameLeft0)+','+str(frameTop0)+'\n'
+            #strFrame += 'PadFrame0.postion_topright = '+str(frameRight0)+','+str(frameTop0)+'\n'
+            #strFrame += 'PadFrame0.postion_bottomleft = '+str(frameLeft0)+','+str(frameBottom0)+'\n'
+            #strFrame += 'PadFrame0.postion_bottomright = '+str(frameRight0)+','+str(frameBottom0)+'\n'
+            strFrame += 'PadFrame0.postion_topleft = '+str(frameLeft0)+','+str(frameBottom0)+'\n'
+            strFrame += 'PadFrame0.postion_topright = '+str(frameRight0)+','+str(frameBottom0)+'\n'
+            strFrame += 'PadFrame0.postion_bottomleft = '+str(frameLeft0)+','+str(frameTop0)+'\n'
+            strFrame += 'PadFrame0.postion_bottomright = '+str(frameRight0)+','+str(frameTop0)+'\n'
             
             frameLeft1 = outrtFrame['points'][0]['ux']-pad['dPanelCenterX']
             frameRight1 = outrtFrame['points'][1]['ux']-pad['dPanelCenterX']
             frameTop1 = innerFrame['points'][0]['uy']-pad['dPanelCenterY']
             frameBottom1 = outrtFrame['points'][0]['uy']-pad['dPanelCenterY']
             strFrame += 'PadFrame1.iDirection = 1\n'
-            strFrame += 'PadFrame1.postion_topleft = '+str(frameLeft1)+','+str(frameTop1)+'\n'
-            strFrame += 'PadFrame1.postion_topright = '+str(frameRight1)+','+str(frameTop1)+'\n'
-            strFrame += 'PadFrame1.postion_bottomleft = '+str(frameLeft1)+','+str(frameBottom1)+'\n'
-            strFrame += 'PadFrame1.postion_bottomright = '+str(frameRight1)+','+str(frameBottom1)+'\n'
+            #strFrame += 'PadFrame1.postion_topleft = '+str(frameLeft1)+','+str(frameTop1)+'\n'
+            #strFrame += 'PadFrame1.postion_topright = '+str(frameRight1)+','+str(frameTop1)+'\n'
+            #strFrame += 'PadFrame1.postion_bottomleft = '+str(frameLeft1)+','+str(frameBottom1)+'\n'
+            #strFrame += 'PadFrame1.postion_bottomright = '+str(frameRight1)+','+str(frameBottom1)+'\n'
+            strFrame += 'PadFrame1.postion_topleft = '+str(frameLeft1)+','+str(frameBottom1)+'\n'
+            strFrame += 'PadFrame1.postion_topright = '+str(frameRight1)+','+str(frameBottom1)+'\n'
+            strFrame += 'PadFrame1.postion_bottomleft = '+str(frameLeft1)+','+str(frameTop1)+'\n'
+            strFrame += 'PadFrame1.postion_bottomright = '+str(frameRight1)+','+str(frameTop1)+'\n'
             
             frameLeft2 = innerFrame['points'][1]['ux']-pad['dPanelCenterX']
             frameRight2 = outrtFrame['points'][1]['ux']-pad['dPanelCenterX']
-            frameTop2 = innerFrame['points'][1]['uy']+pad['region_overlap']-pad['dPanelCenterY']
-            frameBottom2 = innerFrame['points'][0]['uy']+pad['region_overlap']-pad['dPanelCenterY']
+            frameTop2 = innerFrame['points'][1]['uy']-pad['dPanelCenterY'] + pad['region_overlap']
+            frameBottom2 = innerFrame['points'][0]['uy']-pad['dPanelCenterY'] - pad['region_overlap']
             strFrame += 'PadFrame2.iDirection = 2\n'
-            strFrame += 'PadFrame2.postion_topleft = '+str(frameLeft2)+','+str(frameTop2)+'\n'
-            strFrame += 'PadFrame2.postion_topright = '+str(frameRight2)+','+str(frameTop2)+'\n'
-            strFrame += 'PadFrame2.postion_bottomleft = '+str(frameLeft2)+','+str(frameBottom2)+'\n'
-            strFrame += 'PadFrame2.postion_bottomright = '+str(frameRight2)+','+str(frameBottom2)+'\n'
+            #strFrame += 'PadFrame2.postion_topleft = '+str(frameLeft2)+','+str(frameTop2)+'\n'
+            #strFrame += 'PadFrame2.postion_topright = '+str(frameRight2)+','+str(frameTop2)+'\n'
+            #strFrame += 'PadFrame2.postion_bottomleft = '+str(frameLeft2)+','+str(frameBottom2)+'\n'
+            #strFrame += 'PadFrame2.postion_bottomright = '+str(frameRight2)+','+str(frameBottom2)+'\n'
+            strFrame += 'PadFrame2.postion_topleft = '+str(frameLeft2)+','+str(frameBottom2)+'\n'
+            strFrame += 'PadFrame2.postion_topright = '+str(frameRight2)+','+str(frameBottom2)+'\n'
+            strFrame += 'PadFrame2.postion_bottomleft = '+str(frameLeft2)+','+str(frameTop2)+'\n'
+            strFrame += 'PadFrame2.postion_bottomright = '+str(frameRight2)+','+str(frameTop2)+'\n'
             
             frameLeft3 = outrtFrame['points'][0]['ux']-pad['dPanelCenterX']
             frameRight3 = outrtFrame['points'][1]['ux']-pad['dPanelCenterX']
             frameTop3 = outrtFrame['points'][1]['uy']-pad['dPanelCenterY']
             frameBottom3 = innerFrame['points'][1]['uy']-pad['dPanelCenterY']
             strFrame += 'PadFrame3.iDirection = 3\n'
-            strFrame += 'PadFrame3.postion_topleft = '+str(frameLeft3)+','+str(frameTop3)+'\n'
-            strFrame += 'PadFrame3.postion_topright = '+str(frameRight3)+','+str(frameTop3)+'\n'
-            strFrame += 'PadFrame3.postion_bottomleft = '+str(frameLeft3)+','+str(frameBottom3)+'\n'
-            strFrame += 'PadFrame3.postion_bottomright = '+str(frameRight3)+','+str(frameBottom3)+'\n'
+            #strFrame += 'PadFrame3.postion_topleft = '+str(frameLeft3)+','+str(frameTop3)+'\n'
+            #strFrame += 'PadFrame3.postion_topright = '+str(frameRight3)+','+str(frameTop3)+'\n'
+            #strFrame += 'PadFrame3.postion_bottomleft = '+str(frameLeft3)+','+str(frameBottom3)+'\n'
+            #strFrame += 'PadFrame3.postion_bottomright = '+str(frameRight3)+','+str(frameBottom3)+'\n'
+            strFrame += 'PadFrame3.postion_topleft = '+str(frameLeft3)+','+str(frameBottom3)+'\n'
+            strFrame += 'PadFrame3.postion_topright = '+str(frameRight3)+','+str(frameBottom3)+'\n'
+            strFrame += 'PadFrame3.postion_bottomleft = '+str(frameLeft3)+','+str(frameTop3)+'\n'
+            strFrame += 'PadFrame3.postion_bottomright = '+str(frameRight3)+','+str(frameTop3)+'\n'
             
             region_id = 0
             regionTop = frameTop0
@@ -389,7 +487,7 @@ class Pad(models.TransientModel):
                 regionRight0 = frameRight0
                 regionLeft2 = frameLeft2
                 regionRight2 = frameRight2
-                regionBottom = regionTop + regionHeight
+                regionBottom = regionTop - regionHeight
                 strRegion += 'Region'+str(region_id)+'.region = '+str(regionLeft0)+','+str(regionBottom)+';'+str(regionRight0)+','+str(regionBottom)+';'+str(regionRight0)+','+str(regionTop)+';'+str(regionLeft0)+','+str(regionTop)+'\n'
                 strRegion += 'Region'+str(region_id)+'.iFrameNo = 0\n'
                 region_id = region_id + 1
@@ -412,7 +510,7 @@ class Pad(models.TransientModel):
         if len(region_list):
             strMainMark = 'MainMarkNumber = '+str(len(region_list))+'\n' + strMainMark
             
-            markFile = root + '/'+glassName +'/'+ panelName +'/mainMark.jpg'
+            markFile = root + '/'+glassName +'/'+ panelName +'/mainMark.bmp'
             mark = Image.new('L', (width,max_height))
             left = 0
             for blocks in region_list:
@@ -424,7 +522,7 @@ class Pad(models.TransientModel):
                     
                     lower = max_height - region.size[1]
                 left += blocks[0].size[0]
-            mark.save(markFile, 'JPEG')    
+            mark.save(markFile)    
             
         if Pad_Filterpos_Number > 0:
             strPad_Filterpos = 'Pad_Filterpos_Number = '+str(Pad_Filterpos_Number) +'\n' + strPad_Filterpos   
@@ -438,6 +536,7 @@ class Pad(models.TransientModel):
             f.write( strFrame )
             f.write( strRegion )
             f.write( strMainMark )
+            f.write( strSubMark )
             f.write( strPad_Filterpos )
             f.write( strPad_Filter )
             f.write( strPad_Inspect )

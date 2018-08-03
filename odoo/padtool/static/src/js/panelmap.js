@@ -17,11 +17,11 @@ var _t = core._t;
 
 var Panelmap = Map.extend(ControlPanelMixin,{
     template: 'Map',
-/*    
+    
     events: {
-        'click .o_setup_company': 'on_setup_company'
+//        'keydown.canvas-map': '_onKeydown'
     },
-*/
+
     init: function(parent,action){
     	
     	this.pad = {
@@ -61,6 +61,10 @@ var Panelmap = Map.extend(ControlPanelMixin,{
     		self._loadPad();
     		self._showToolbar();
     		self._drawHawk();
+    		
+    		self._getSubMark();
+    		self._drawSubMark();
+    		
     		$('.breadcrumb').append('<li>frame</li>');
     	});
     },
@@ -202,7 +206,7 @@ var Panelmap = Map.extend(ControlPanelMixin,{
         });
     	
     	function selectObj(obj){
-    		obj.visible = obj.padType ? obj.padType == this.pad.curType : obj.visible;
+    		obj.visible = obj.padType ? (obj.padType == this.pad.curType || (obj.padType == 'frame_region' && this.pad.curType == 'frame') ) : obj.visible;
     		
 		}
     	this.map.forEachObject(selectObj.bind(this));
@@ -255,6 +259,7 @@ var Panelmap = Map.extend(ControlPanelMixin,{
     		
     		pad.objs.push(o);
     	});
+    	pad.pMarkRegionArray = this.pMarkRegionArray;
     	
     	this._rpc({model: 'padtool.pad',method: 'save_pad',args: [this.glassName,this.panelName,pad],}).then(function(){
     		self.notification_manager.notify(_t('Operation Result'),_t('Pad was succesfully saved!'),false);
@@ -370,6 +375,8 @@ var Panelmap = Map.extend(ControlPanelMixin,{
     	
     },
     
+    
+    
     _renderButtons: function () {
     	this.$buttons = $(QWeb.render('Panelmap.Buttons'));
     	//this.$switch_buttons = $(QWeb.render('Panelmap.status'));
@@ -402,6 +409,11 @@ var Panelmap = Map.extend(ControlPanelMixin,{
   	},
      
      _loadPad: function(){
+    	var pos = this.cameraConf.general.glass_center.split(',');
+ 		this.glass_center_x = parseFloat(pos[0]);
+ 		this.glass_center_y = parseFloat(pos[1]);
+ 		this.glass_angle = parseFloat(this.cameraConf.general.angle);
+ 		
     	var self = this;
     	var url = '/glassdata/'+this.glassName +'/'+ this.panelName +'/'+ this.panelName+'.json';
 

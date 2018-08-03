@@ -8,6 +8,8 @@ var CAMERAROW	=	2;
 var USE_SCAN_NO	=	40;
 var USE_BLOCK_X_NO=	10;
 var USE_BLOCK_Y_NO=	10;
+var SEARCH_SUBMARK_HEIGHT = 5000;
+var WIDTH_LIMIT_FOR_SEGMENT = 5000;
 
 var SCAN_PARA =  Class.extend({
     init: function () {
@@ -389,6 +391,10 @@ var COORDINATE_TRANSFER =  Class.extend({
     	{
     		return false;
     	}
+    	if(iIPIndex_BR < iIPIndex_BL || ( iIPIndex_BR ==  iIPIndex_BL && iScanIndex_BR < iScanIndex_BL)){//by wft
+    		iIPIndex_BL = iIPIndex_BR;
+    		iScanIndex_BL = iScanIndex_BR;
+    	}
     	
     	iBlockMapXIndex = 0;
     	this.bmpBlockMapPara.iTotalBlockX = 0;
@@ -476,14 +482,14 @@ var COORDINATE_TRANSFER =  Class.extend({
     			ptBottomPointY = dRangeBottom;
     			ptTopPointY = dRangeTop;
     
-    			let {iIPIndex:iIPIndex_TopPoint, iScanIndex:iScanIndex_TopPoint, iBlockIndex:iBlockIndex_TopPoint} = this.UMCoordinateToBlockMapCoordinate(ptTopPointX, ptTopPointY);
+    			let {iIPIndex:iIPIndex_TopPoint, iScanIndex:iScanIndex_TopPoint, iBlockIndex:iBlockIndex_TopPoint} = this.UMCoordinateToBlockMapCoordinate(ptTopPointX, ptTopPointY,true);
 
     			if(iBlockIndex_TopPoint == undefined)
     			{
     				return false;
     			}
 
-    			let {iIPIndex:iIPIndex_BottomPoint, iScanIndex:iScanIndex_BottomPoint, iBlockIndex:iBlockIndex_BottomPoint} = this.UMCoordinateToBlockMapCoordinate(ptBottomPointX, ptBottomPointY);
+    			let {iIPIndex:iIPIndex_BottomPoint, iScanIndex:iScanIndex_BottomPoint, iBlockIndex:iBlockIndex_BottomPoint} = this.UMCoordinateToBlockMapCoordinate(ptBottomPointX, ptBottomPointY,true);
 
     			if(iBlockIndex_BottomPoint == undefined)
     			{
@@ -953,8 +959,844 @@ var COORDINATE_TRANSFER =  Class.extend({
     	}
     	
     	return {};
-    }
+    },
     
+    GetSubMark:function(dPanelLeft,dPanelBottom,dPanelRight,dPanelTop,dPeriodX, dPeriodY){
+    	var pMarkRegionArray = new Array();
+    	
+    	var iCount;
+    	var dSearchMarkHeight;				//Search Mark Range in Vertical Frame
+    	var dResolutionX;					//Resolution X
+    	var dResolutionY;					//Resolution Y
+
+    	var dScanRangeBottom;				//Scan Range Bottom
+    	var dScanRangeTop;					//Scan Range Top
+    	var dScanRangeLeft;					//Scan Range Left
+    	var dScanRangeRight;					//Scan Range Right
+    	var bNeedSegment;						//Segment Flag
+    	
+    	var dMarkWidth = Math.max(dPeriodX, dPeriodY) * 3 / 2;
+    	var dMarkHeight = dMarkWidth;
+    	
+    	//Left Frame Mark
+    	let {iIP:iIPIndex_Bottom, iScan:iScanIndex_Bottom} = this.JudgeIPScan_UM(dPanelLeft, dPanelBottom);
+    	
+    	if(iIPIndex_Bottom == undefined || iScanIndex_Bottom == undefined)
+    	{
+    		iIPIndex_Bottom = -1;
+    		iScanIndex_Bottom = -1;
+    		iIPIndex_Top = -1;
+    		iScanIndex_Top = -1;
+    	}
+    	
+    	let {iIP:iIPIndex_Top, iScan:iScanIndex_Top} = this.JudgeIPScan_UM(dPanelLeft, dPanelTop);
+    	
+    	if(iIPIndex_Top == undefined || iScanIndex_Top == undefined)
+    	{
+    		iIPIndex_Top = -1;
+    		iScanIndex_Top = -1;
+    		iIPIndex_Top = -1;
+    		iScanIndex_Top = -1;
+    	}
+
+    	if(iIPIndex_Top > iIPIndex_Bottom && iIPIndex_Top != -1 && iIPIndex_Bottom != -1)
+    	{
+    		//Down Camera
+    		dScanRangeTop = this.mpMachinePara.aIPParaArray[iIPIndex_Bottom].aScanParaArray[iScanIndex_Bottom].dRange_Top;
+    		dScanRangeLeft = this.mpMachinePara.aIPParaArray[iIPIndex_Bottom].aScanParaArray[iScanIndex_Bottom].dRange_Left;
+    		dScanRangeRight = this.mpMachinePara.aIPParaArray[iIPIndex_Bottom].aScanParaArray[iScanIndex_Bottom].dRange_Right;
+    		dResolutionX = this.mpMachinePara.aIPParaArray[iIPIndex_Bottom].aScanParaArray[iScanIndex_Bottom].dResolutionX;
+    		dResolutionY = this.mpMachinePara.aIPParaArray[iIPIndex_Bottom].aScanParaArray[iScanIndex_Bottom].dResolutionY;
+
+    		dSearchMarkHeight = SEARCH_SUBMARK_HEIGHT * dResolutionY;
+    		iCount = Math.floor((dScanRangeTop - dPanelBottom) / dSearchMarkHeight);
+
+    		for(var i = 0; i < iCount; i ++)
+    		{
+    			var MarkRegionTemp = new Object();
+
+    			if(i == iCount - 1)
+    			{
+    				MarkRegionTemp.dPositionX = dPanelLeft;
+
+    				if(MarkRegionTemp.dPositionX > dScanRangeRight - dMarkWidth / 2)
+    				{
+    					MarkRegionTemp.dPositionX = dScanRangeRight - dMarkWidth;
+    				}
+
+    				MarkRegionTemp.dPositionY = dScanRangeTop - dMarkHeight * 3 / 2;
+    				MarkRegionTemp.iMarkDirectionType = 0;
+    				MarkRegionTemp.iIPIndex = iIPIndex_Bottom;
+    				MarkRegionTemp.iScanIndex = iScanIndex_Bottom;
+    				MarkRegionTemp.iSizeWidth = Math.round(dMarkWidth / dResolutionX);
+    				MarkRegionTemp.iSizeHeight = Math.round(dMarkHeight / dResolutionY);
+    				MarkRegionTemp.dMarkWidth = dMarkWidth;
+    				MarkRegionTemp.dMarkHeight = dMarkHeight;
+    			}
+    			else
+    			{
+    				MarkRegionTemp.dPositionX = dPanelLeft;
+
+    				if(MarkRegionTemp.dPositionX > dScanRangeRight - dMarkWidth / 2)
+    				{
+    					MarkRegionTemp.dPositionX = dScanRangeRight - dMarkWidth;
+    				}
+
+    				MarkRegionTemp.dPositionY = dPanelBottom + i * dSearchMarkHeight + dMarkHeight * 3 / 2;
+    				MarkRegionTemp.iMarkDirectionType = 0;
+    				MarkRegionTemp.iIPIndex = iIPIndex_Bottom;
+    				MarkRegionTemp.iScanIndex = iScanIndex_Bottom;
+    				MarkRegionTemp.iSizeWidth = Math.round(dMarkWidth / dResolutionX);
+    				MarkRegionTemp.iSizeHeight = Math.round(dMarkHeight / dResolutionY);
+    				MarkRegionTemp.dMarkWidth = dMarkWidth;
+    				MarkRegionTemp.dMarkHeight = dMarkHeight;
+    			}
+
+    			pMarkRegionArray.push(MarkRegionTemp);
+    		}
+
+    		//Up Camera
+    		dScanRangeBottom = this.mpMachinePara.aIPParaArray[iIPIndex_Top].aScanParaArray[iScanIndex_Top].dRange_Bottom;
+    		dScanRangeLeft = this.mpMachinePara.aIPParaArray[iIPIndex_Top].aScanParaArray[iScanIndex_Top].dRange_Left;
+    		dScanRangeRight = this.mpMachinePara.aIPParaArray[iIPIndex_Top].aScanParaArray[iScanIndex_Top].dRange_Right;
+    		dResolutionX = this.mpMachinePara.aIPParaArray[iIPIndex_Top].aScanParaArray[iScanIndex_Top].dResolutionX;
+    		dResolutionY = this.mpMachinePara.aIPParaArray[iIPIndex_Top].aScanParaArray[iScanIndex_Top].dResolutionY;
+
+    		dSearchMarkHeight = SEARCH_SUBMARK_HEIGHT * dResolutionY;
+    		iCount = Math.floor((dPanelTop - dScanRangeBottom) / dSearchMarkHeight);
+
+    		for(var i = 0; i < iCount; i ++)
+    		{
+    			var MarkRegionTemp = new Object();
+
+    			if(i == iCount - 1)
+    			{
+    				MarkRegionTemp.dPositionX = dPanelLeft;
+
+    				if(MarkRegionTemp.dPositionX > dScanRangeRight - dMarkWidth / 2)
+    				{
+    					MarkRegionTemp.dPositionX = dScanRangeRight - dMarkWidth;
+    				}
+
+    				MarkRegionTemp.dPositionY = dPanelTop - dMarkHeight * 3 / 2;
+    				MarkRegionTemp.iMarkDirectionType = 0;
+    				MarkRegionTemp.iIPIndex = iIPIndex_Bottom;
+    				MarkRegionTemp.iScanIndex = iScanIndex_Bottom;
+    				MarkRegionTemp.iSizeWidth = Math.round(dMarkWidth / dResolutionX);
+    				MarkRegionTemp.iSizeHeight = Math.round(dMarkHeight / dResolutionY);
+    				MarkRegionTemp.dMarkWidth = dMarkWidth;
+    				MarkRegionTemp.dMarkHeight = dMarkHeight;
+    			}
+    			else
+    			{
+    				MarkRegionTemp.dPositionX = dPanelLeft;
+
+    				if(MarkRegionTemp.dPositionX > dScanRangeRight - dMarkWidth / 2)
+    				{
+    					MarkRegionTemp.dPositionX = dScanRangeRight - dMarkWidth;
+    				}
+
+    				MarkRegionTemp.dPositionY = dScanRangeBottom + i * dSearchMarkHeight + dMarkHeight * 3 / 2;
+    				MarkRegionTemp.iMarkDirectionType = 0;
+    				MarkRegionTemp.iIPIndex = iIPIndex_Bottom;
+    				MarkRegionTemp.iScanIndex = iScanIndex_Bottom;
+    				MarkRegionTemp.iSizeWidth = Math.round(dMarkWidth / dResolutionX);
+    				MarkRegionTemp.iSizeHeight = Math.round(dMarkHeight / dResolutionY);
+    				MarkRegionTemp.dMarkWidth = dMarkWidth;
+    				MarkRegionTemp.dMarkHeight = dMarkHeight;
+    			}
+
+    			pMarkRegionArray.push(MarkRegionTemp);
+    		}
+    	}
+    	else if(iIPIndex_Top == iIPIndex_Bottom && iIPIndex_Bottom != -1 && iIPIndex_Top != -1)
+    	{
+    		dScanRangeLeft = this.mpMachinePara.aIPParaArray[iIPIndex_Bottom].aScanParaArray[iScanIndex_Bottom].dRange_Left;
+    		dScanRangeRight = this.mpMachinePara.aIPParaArray[iIPIndex_Bottom].aScanParaArray[iScanIndex_Bottom].dRange_Right;
+    		dResolutionX = this.mpMachinePara.aIPParaArray[iIPIndex_Bottom].aScanParaArray[iScanIndex_Bottom].dResolutionX;
+    		dResolutionY = this.mpMachinePara.aIPParaArray[iIPIndex_Bottom].aScanParaArray[iScanIndex_Bottom].dResolutionY;
+    		
+    		dSearchMarkHeight = SEARCH_SUBMARK_HEIGHT * dResolutionY;
+    		iCount = Math.floor((dPanelTop - dPanelBottom) / dSearchMarkHeight);
+    		
+    		for(var i = 0; i < iCount; i ++)
+    		{
+    			var MarkRegionTemp =  new Object();
+    			
+    			if(i == iCount - 1)
+    			{
+    				MarkRegionTemp.dPositionX = dPanelLeft;
+    				
+    				if(MarkRegionTemp.dPositionX > dScanRangeRight - dMarkWidth / 2)
+    				{
+    					MarkRegionTemp.dPositionX = dScanRangeRight - dMarkWidth;
+    				}
+
+    				MarkRegionTemp.dPositionY = dPanelTop - dMarkHeight * 3 / 2;
+    				MarkRegionTemp.iMarkDirectionType = 0;
+    				MarkRegionTemp.iIPIndex = iIPIndex_Bottom;
+    				MarkRegionTemp.iScanIndex = iScanIndex_Bottom;
+    				MarkRegionTemp.iSizeWidth = Math.round(dMarkWidth / dResolutionX);
+    				MarkRegionTemp.iSizeHeight = Math.round(dMarkHeight / dResolutionY);
+    				MarkRegionTemp.dMarkWidth = dMarkWidth;
+    				MarkRegionTemp.dMarkHeight = dMarkHeight;
+    			}
+    			else
+    			{
+    				MarkRegionTemp.dPositionX = dPanelLeft;
+
+    				if(MarkRegionTemp.dPositionX > dScanRangeRight - dMarkWidth / 2)
+    				{
+    					MarkRegionTemp.dPositionX = dScanRangeRight - dMarkWidth;
+    				}
+    				
+    				MarkRegionTemp.dPositionY = dPanelBottom + i * dSearchMarkHeight + dMarkHeight * 3 / 2;
+    				MarkRegionTemp.iMarkDirectionType = 0;
+    				MarkRegionTemp.iIPIndex = iIPIndex_Bottom;
+    				MarkRegionTemp.iScanIndex = iScanIndex_Bottom;
+    				MarkRegionTemp.iSizeWidth = Math.round(dMarkWidth / dResolutionX);
+    				MarkRegionTemp.iSizeHeight = Math.round(dMarkHeight / dResolutionY);
+    				MarkRegionTemp.dMarkWidth = dMarkWidth;
+    				MarkRegionTemp.dMarkHeight = dMarkHeight;
+    			}
+
+    			pMarkRegionArray.push(MarkRegionTemp);
+    		}
+    	}	
+
+    	//Right
+    	let {iIP:iIPIndex_Bottom2, iScan:iScanIndex_Bottom2} = this.JudgeIPScan_UM(dPanelRight, dPanelBottom);
+
+    	if(iIPIndex_Bottom == undefined || iScanIndex_Bottom == undefined)
+    	{
+    		iIPIndex_Bottom = -1;
+    		iScanIndex_Bottom = -1;
+    		iIPIndex_Top = -1;
+    		iScanIndex_Top = -1;
+    	}else{
+    		iIPIndex_Bottom = iIPIndex_Bottom2;
+    		iScanIndex_Bottom = iScanIndex_Bottom2;
+    	}
+
+    	let {iIP:iIPIndex_Top2, iScan:iScanIndex_Top2} = this.JudgeIPScan_UM(dPanelRight, dPanelTop);
+
+    	if(iIPIndex_Top == undefined || iScanIndex_Top == undefined)
+    	{
+    		iIPIndex_Bottom = -1;
+    		iScanIndex_Bottom = -1;
+    		iIPIndex_Top = -1;
+    		iScanIndex_Top = -1;
+    	}else{
+    		iIPIndex_Top = iIPIndex_Top2;
+    		iScanIndex_Top = iScanIndex_Top2;
+    	}
+
+    	if(iIPIndex_Top > iIPIndex_Bottom && iIPIndex_Top != -1 && iIPIndex_Bottom != -1)
+    	{
+    		//Down Camera
+    		dScanRangeTop = this.mpMachinePara.aIPParaArray[iIPIndex_Bottom].aScanParaArray[iScanIndex_Bottom].dRange_Top;
+    		dScanRangeLeft = this.mpMachinePara.aIPParaArray[iIPIndex_Bottom].aScanParaArray[iScanIndex_Bottom].dRange_Left;
+    		dScanRangeRight = this.mpMachinePara.aIPParaArray[iIPIndex_Bottom].aScanParaArray[iScanIndex_Bottom].dRange_Right;
+    		dResolutionX = this.mpMachinePara.aIPParaArray[iIPIndex_Bottom].aScanParaArray[iScanIndex_Bottom].dResolutionX;
+    		dResolutionY = this.mpMachinePara.aIPParaArray[iIPIndex_Bottom].aScanParaArray[iScanIndex_Bottom].dResolutionY;
+
+    		dSearchMarkHeight = SEARCH_SUBMARK_HEIGHT * dResolutionY;
+    		iCount = Math.floor((dScanRangeTop - dPanelBottom) / dSearchMarkHeight);
+
+    		for(var i = 0; i < iCount; i ++)
+    		{
+    			var MarkRegionTemp = new Object();
+
+    			if(i == iCount - 1)
+    			{
+    				MarkRegionTemp.dPositionX = dPanelRight;
+
+    				if(MarkRegionTemp.dPositionX < dScanRangeLeft + dMarkWidth / 2)
+    				{
+    					MarkRegionTemp.dPositionX = dScanRangeLeft + dMarkWidth;
+    				}
+
+    				MarkRegionTemp.dPositionY = dScanRangeTop - dMarkHeight * 3 / 2;
+    				MarkRegionTemp.iMarkDirectionType = 0;
+    				MarkRegionTemp.iIPIndex = iIPIndex_Bottom;
+    				MarkRegionTemp.iScanIndex = iScanIndex_Bottom;
+    				MarkRegionTemp.iSizeWidth = Math.round(dMarkWidth / dResolutionX);
+    				MarkRegionTemp.iSizeHeight = Math.round(dMarkHeight / dResolutionY);
+    				MarkRegionTemp.dMarkWidth = dMarkWidth;
+    				MarkRegionTemp.dMarkHeight = dMarkHeight;
+    			}
+    			else
+    			{
+    				MarkRegionTemp.dPositionX = dPanelRight;
+
+    				if(MarkRegionTemp.dPositionX < dScanRangeLeft + dMarkWidth / 2)
+    				{
+    					MarkRegionTemp.dPositionX = dScanRangeLeft + dMarkWidth;
+    				}
+
+    				MarkRegionTemp.dPositionY = dPanelBottom + i * dSearchMarkHeight + dMarkHeight * 3 / 2;
+    				MarkRegionTemp.iMarkDirectionType = 0;
+    				MarkRegionTemp.iIPIndex = iIPIndex_Bottom;
+    				MarkRegionTemp.iScanIndex = iScanIndex_Bottom;
+    				MarkRegionTemp.iSizeWidth = Math.round(dMarkWidth / dResolutionX);
+    				MarkRegionTemp.iSizeHeight = Math.round(dMarkHeight / dResolutionY);
+    				MarkRegionTemp.dMarkWidth = dMarkWidth;
+    				MarkRegionTemp.dMarkHeight = dMarkHeight;
+    			}
+
+    			pMarkRegionArray.push(MarkRegionTemp);
+    		}
+
+    		//Up Camera
+    		dScanRangeBottom = this.mpMachinePara.aIPParaArray[iIPIndex_Top].aScanParaArray[iScanIndex_Top].dRange_Bottom;
+    		dScanRangeLeft = this.mpMachinePara.aIPParaArray[iIPIndex_Top].aScanParaArray[iScanIndex_Top].dRange_Left;
+    		dScanRangeRight = this.mpMachinePara.aIPParaArray[iIPIndex_Top].aScanParaArray[iScanIndex_Top].dRange_Right;
+    		dResolutionX = this.mpMachinePara.aIPParaArray[iIPIndex_Top].aScanParaArray[iScanIndex_Top].dResolutionX;
+    		dResolutionY = this.mpMachinePara.aIPParaArray[iIPIndex_Top].aScanParaArray[iScanIndex_Top].dResolutionY;
+
+    		dSearchMarkHeight = SEARCH_SUBMARK_HEIGHT * dResolutionY;
+    		iCount = Math.floor((dPanelTop - dScanRangeBottom) / dSearchMarkHeight);
+
+    		for(var i = 0; i < iCount; i ++)
+    		{
+    			var MarkRegionTemp = new Object();
+
+    			if(i == iCount - 1)
+    			{
+    				MarkRegionTemp.dPositionX = dPanelRight;
+
+    				if(MarkRegionTemp.dPositionX < dScanRangeLeft + dMarkWidth / 2)
+    				{
+    					MarkRegionTemp.dPositionX = dScanRangeLeft + dMarkWidth;
+    				}
+
+    				MarkRegionTemp.dPositionY = dPanelTop - dMarkHeight * 3 / 2;
+    				MarkRegionTemp.iMarkDirectionType = 0;
+    				MarkRegionTemp.iIPIndex = iIPIndex_Bottom;
+    				MarkRegionTemp.iScanIndex = iScanIndex_Bottom;
+    				MarkRegionTemp.iSizeWidth = Math.round(dMarkWidth / dResolutionX);
+    				MarkRegionTemp.iSizeHeight = Math.round(dMarkHeight / dResolutionY);
+    				MarkRegionTemp.dMarkWidth = dMarkWidth;
+    				MarkRegionTemp.dMarkHeight = dMarkHeight;
+    			}
+    			else
+    			{
+    				MarkRegionTemp.dPositionX = dPanelRight;
+
+    				if(MarkRegionTemp.dPositionX < dScanRangeLeft + dMarkWidth / 2)
+    				{
+    					MarkRegionTemp.dPositionX = dScanRangeLeft + dMarkWidth;
+    				}
+
+    				MarkRegionTemp.dPositionY = dScanRangeBottom + i * dSearchMarkHeight + dMarkHeight * 3 / 2;
+    				MarkRegionTemp.iMarkDirectionType = 0;
+    				MarkRegionTemp.iIPIndex = iIPIndex_Bottom;
+    				MarkRegionTemp.iScanIndex = iScanIndex_Bottom;
+    				MarkRegionTemp.iSizeWidth = Math.round(dMarkWidth / dResolutionX);
+    				MarkRegionTemp.iSizeHeight = Math.round(dMarkHeight / dResolutionY);
+    				MarkRegionTemp.dMarkWidth = dMarkWidth;
+    				MarkRegionTemp.dMarkHeight = dMarkHeight;
+    			}
+
+    			pMarkRegionArray.push(MarkRegionTemp);
+    		}
+    	}
+    	else if(iIPIndex_Top == iIPIndex_Bottom && iIPIndex_Bottom != -1 && iIPIndex_Top != -1)
+    	{
+    		dScanRangeLeft = this.mpMachinePara.aIPParaArray[iIPIndex_Bottom].aScanParaArray[iScanIndex_Bottom].dRange_Left;
+    		dScanRangeRight = this.mpMachinePara.aIPParaArray[iIPIndex_Bottom].aScanParaArray[iScanIndex_Bottom].dRange_Right;
+    		dResolutionX = this.mpMachinePara.aIPParaArray[iIPIndex_Bottom].aScanParaArray[iScanIndex_Bottom].dResolutionX;
+    		dResolutionY = this.mpMachinePara.aIPParaArray[iIPIndex_Bottom].aScanParaArray[iScanIndex_Bottom].dResolutionY;
+
+    		dSearchMarkHeight = SEARCH_SUBMARK_HEIGHT * dResolutionY;
+    		iCount = Math.floor((dPanelTop - dPanelBottom) / dSearchMarkHeight);
+
+    		for(var i = 0; i < iCount; i ++)
+    		{
+    			var MarkRegionTemp = new Object();
+
+    			if(i == iCount - 1)
+    			{
+    				MarkRegionTemp.dPositionX = dPanelRight;
+
+    				if(MarkRegionTemp.dPositionX < dScanRangeLeft + dMarkWidth / 2)
+    				{
+    					MarkRegionTemp.dPositionX = dScanRangeLeft + dMarkWidth;
+    				}
+
+    				MarkRegionTemp.dPositionY = dPanelTop - dMarkHeight * 3 / 2;
+    				MarkRegionTemp.iMarkDirectionType = 0;
+    				MarkRegionTemp.iIPIndex = iIPIndex_Bottom;
+    				MarkRegionTemp.iScanIndex = iScanIndex_Bottom;
+    				MarkRegionTemp.iSizeWidth = Math.round(dMarkWidth / dResolutionX);
+    				MarkRegionTemp.iSizeHeight = Math.round(dMarkHeight / dResolutionY);
+    				MarkRegionTemp.dMarkWidth = dMarkWidth;
+    				MarkRegionTemp.dMarkHeight = dMarkHeight;
+    			}
+    			else
+    			{
+    				MarkRegionTemp.dPositionX = dPanelRight;
+
+    				if(MarkRegionTemp.dPositionX < dScanRangeLeft + dMarkWidth / 2)
+    				{
+    					MarkRegionTemp.dPositionX = dScanRangeLeft + dMarkWidth;
+    				}
+
+    				MarkRegionTemp.dPositionY = dPanelBottom + i * dSearchMarkHeight + dMarkHeight * 3 / 2;
+    				MarkRegionTemp.iMarkDirectionType = 0;
+    				MarkRegionTemp.iIPIndex = iIPIndex_Bottom;
+    				MarkRegionTemp.iScanIndex = iScanIndex_Bottom;
+    				MarkRegionTemp.iSizeWidth = Math.round(dMarkWidth / dResolutionX);
+    				MarkRegionTemp.iSizeHeight = Math.round(dMarkHeight / dResolutionY);
+    				MarkRegionTemp.dMarkWidth = dMarkWidth;
+    				MarkRegionTemp.dMarkHeight = dMarkHeight;
+    			}
+
+    			pMarkRegionArray.push(MarkRegionTemp);
+    		}
+    	}
+    	
+    	//Bottom
+    	let {iIP:iIPIndex_Left, iScan:iScanIndex_Left} = this.JudgeIPScan_UM(dPanelLeft, dPanelBottom);
+    	
+    	if(iIPIndex_Left == undefined || iScanIndex_Left == undefined)
+    	{
+    		iIPIndex_Left = 0;
+    		iIPIndex_Right = -1;
+    		iScanIndex_Left = 0;
+    		iScanIndex_Right = -1;
+    	}
+    	
+    	let {iIP:iIPIndex_Right, iScan:iScanIndex_Right} = this.JudgeIPScan_UM(dPanelRight, dPanelBottom);
+
+    	if(iIPIndex_Right == undefined || iScanIndex_Right == undefined)
+    	{
+    		iIPIndex_Left = 0;
+    		iIPIndex_Right = -1;
+    		iScanIndex_Left = 0;
+    		iScanIndex_Right = -1;
+    	}
+    	
+    	for(var iIPIndex = iIPIndex_Left; iIPIndex <= iIPIndex_Right; iIPIndex ++)
+    	{
+    		var iScanIndexMin;
+    		var iScanIndexMax;
+    		
+    		if(iIPIndex == iIPIndex_Left)
+    		{
+    			iScanIndexMin = iScanIndex_Left;
+    		}
+    		else
+    		{
+    			iScanIndexMin = 0;
+    		}
+    		
+    		if(iIPIndex == iIPIndex_Right)
+    		{
+    			iScanIndexMax = iScanIndex_Right;
+    		}
+    		else
+    		{
+    			iScanIndexMax = this.mpMachinePara.iTotalScan - 1;
+    		}
+    		
+    		for(var iScanIndex = iScanIndexMin; iScanIndex <= iScanIndexMax; iScanIndex ++)
+    		{
+    			dScanRangeLeft = this.mpMachinePara.aIPParaArray[iIPIndex].aScanParaArray[iScanIndex].dRange_Left;
+    			dScanRangeRight = this.mpMachinePara.aIPParaArray[iIPIndex].aScanParaArray[iScanIndex].dRange_Right;
+    			dResolutionX = this.mpMachinePara.aIPParaArray[iIPIndex].aScanParaArray[iScanIndex].dResolutionX;
+    			dResolutionY = this.mpMachinePara.aIPParaArray[iIPIndex].aScanParaArray[iScanIndex].dResolutionY;
+    			
+    			if(iIPIndex == iIPIndex_Left && iScanIndex == iScanIndex_Left)
+    			{
+    				if(Math.abs(dScanRangeRight - dPanelLeft) > (dResolutionX * WIDTH_LIMIT_FOR_SEGMENT))
+    				{
+    					bNeedSegment = true;
+    				}
+    				else
+    				{
+    					bNeedSegment = false;
+    				}
+    				
+    				if(bNeedSegment)
+    				{
+    					var MarkRegionTempLeft = new Object();
+    					var MarkRegionTempRight = new Object();
+    					
+    					//Left
+    					MarkRegionTempLeft.dPositionX = ((dScanRangeRight + dPanelLeft) / 2 + dPanelLeft) / 2;
+    					MarkRegionTempLeft.dPositionY = dPanelBottom;
+    					MarkRegionTempLeft.iMarkDirectionType = 1;
+    					MarkRegionTempLeft.iIPIndex = iIPIndex;
+    					MarkRegionTempLeft.iScanIndex = iScanIndex;
+    					MarkRegionTempLeft.iSizeWidth = Math.round(dMarkWidth / dResolutionX);
+    					MarkRegionTempLeft.iSizeHeight = Math.round(dMarkHeight / dResolutionY);
+    					MarkRegionTempLeft.dMarkWidth = dMarkWidth;
+    					MarkRegionTempLeft.dMarkHeight = dMarkHeight;
+
+    					pMarkRegionArray.push(MarkRegionTempLeft);
+
+    					//Right
+    					MarkRegionTempRight.dPositionX = ((dScanRangeRight + dPanelLeft) / 2 + dScanRangeRight) / 2;
+    					MarkRegionTempRight.dPositionY = dPanelBottom;
+    					MarkRegionTempRight.iMarkDirectionType = 1;
+    					MarkRegionTempRight.iIPIndex = iIPIndex;
+    					MarkRegionTempRight.iScanIndex = iScanIndex;
+    					MarkRegionTempRight.iSizeWidth = Math.round(dMarkWidth / dResolutionX);
+    					MarkRegionTempRight.iSizeHeight = Math.round(dMarkHeight / dResolutionY);
+    					MarkRegionTempRight.dMarkWidth = dMarkWidth;
+    					MarkRegionTempRight.dMarkHeight = dMarkHeight;
+
+    					pMarkRegionArray.push(MarkRegionTempRight);
+    				}
+    				else
+    				{
+    					var MarkRegionTemp = new Object();
+
+    					MarkRegionTemp.dPositionX = (dScanRangeRight + dPanelLeft) / 2;
+    					
+    					if(MarkRegionTemp.dPositionX > dScanRangeRight - dMarkWidth / 2)
+    					{
+    						MarkRegionTemp.dPositionX = dScanRangeRight - dMarkWidth;
+    					}
+    					
+    					MarkRegionTemp.dPositionY = dPanelBottom;
+    					MarkRegionTemp.iMarkDirectionType = 1;
+    					MarkRegionTemp.iIPIndex = iIPIndex;
+    					MarkRegionTemp.iScanIndex = iScanIndex;
+    					MarkRegionTemp.iSizeWidth = Math.round(dMarkWidth / dResolutionX );
+    					MarkRegionTemp.iSizeHeight = Math.round(dMarkHeight / dResolutionY );
+    					MarkRegionTemp.dMarkWidth = dMarkWidth;
+    					MarkRegionTemp.dMarkHeight = dMarkHeight;
+    					
+    					pMarkRegionArray.push(MarkRegionTemp);
+    				}
+    			}
+    			else if(iIPIndex == iIPIndex_Right && iScanIndex == iScanIndex_Right)
+    			{
+    				if(Math.abs(dPanelRight - dScanRangeLeft) > (dResolutionX * WIDTH_LIMIT_FOR_SEGMENT))
+    				{
+    					bNeedSegment = true;
+    				}
+    				else
+    				{
+    					bNeedSegment = false;
+    				}
+    				
+    				if(bNeedSegment)
+    				{
+    					var MarkRegionTempLeft = new Object();
+    					var MarkRegionTempRight = new Object();
+    					
+    					//Left
+    					MarkRegionTempLeft.dPositionX = ((dScanRangeLeft + dPanelRight) / 2 + dScanRangeLeft) / 2;
+    					MarkRegionTempLeft.dPositionY = dPanelBottom;
+    					MarkRegionTempLeft.iMarkDirectionType = 1;
+    					MarkRegionTempLeft.iIPIndex = iIPIndex;
+    					MarkRegionTempLeft.iScanIndex = iScanIndex;
+    					MarkRegionTempLeft.iSizeWidth = Math.round(dMarkWidth / dResolutionX );
+    					MarkRegionTempLeft.iSizeHeight = Math.round(dMarkHeight / dResolutionY);
+    					MarkRegionTempLeft.dMarkWidth = dMarkWidth;
+    					MarkRegionTempLeft.dMarkHeight = dMarkHeight;
+    					
+    					pMarkRegionArray.push(MarkRegionTempLeft);
+    					
+    					//Right
+    					MarkRegionTempRight.dPositionX = ((dScanRangeLeft + dPanelRight) / 2 + dPanelRight) / 2;
+    					MarkRegionTempRight.dPositionY = dPanelBottom;
+    					MarkRegionTempRight.iMarkDirectionType = 1;
+    					MarkRegionTempRight.iIPIndex = iIPIndex;
+    					MarkRegionTempRight.iScanIndex = iScanIndex;
+    					MarkRegionTempRight.iSizeWidth = Math.round(dMarkWidth / dResolutionX );
+    					MarkRegionTempRight.iSizeHeight = Math.round(dMarkHeight / dResolutionY );
+    					MarkRegionTempRight.dMarkWidth = dMarkWidth;
+    					MarkRegionTempRight.dMarkHeight = dMarkHeight;
+    					
+    					pMarkRegionArray.push(MarkRegionTempRight);
+    				}
+    				else
+    				{
+    					var MarkRegionTemp = new Object();
+    					
+    					MarkRegionTemp.dPositionX = (dScanRangeLeft + dPanelRight) / 2;
+    					
+    					if(MarkRegionTemp.dPositionX < (dScanRangeLeft + dMarkWidth / 2))
+    					{
+    						MarkRegionTemp.dPositionX = dScanRangeRight + dMarkWidth;
+    					}
+
+    					MarkRegionTemp.dPositionY = dPanelBottom;
+    					MarkRegionTemp.iMarkDirectionType = 1;
+    					MarkRegionTemp.iIPIndex = iIPIndex;
+    					MarkRegionTemp.iScanIndex = iScanIndex;
+    					MarkRegionTemp.iSizeWidth = Math.round(dMarkWidth / dResolutionX);
+    					MarkRegionTemp.iSizeHeight = Math.round(dMarkHeight / dResolutionY );
+    					MarkRegionTemp.dMarkWidth = dMarkWidth;
+    					MarkRegionTemp.dMarkHeight = dMarkHeight;
+    					
+    					pMarkRegionArray.push(MarkRegionTemp);
+    				}
+    			}
+    			else
+    			{
+    				var MarkRegionTempLeft = new Object();
+    				var MarkRegionTempRight = new Object();
+
+    				//Left
+    				MarkRegionTempLeft.dPositionX = ((dScanRangeLeft + dScanRangeRight) / 2 + dScanRangeLeft) / 2;
+    				MarkRegionTempLeft.dPositionY = dPanelBottom;
+    				MarkRegionTempLeft.iMarkDirectionType = 1;
+    				MarkRegionTempLeft.iIPIndex = iIPIndex;
+    				MarkRegionTempLeft.iScanIndex = iScanIndex;
+    				MarkRegionTempLeft.iSizeWidth = Math.round(dMarkWidth / dResolutionX );
+    				MarkRegionTempLeft.iSizeHeight = Math.round(dMarkHeight / dResolutionY );
+    				MarkRegionTempLeft.dMarkWidth = dMarkWidth;
+					MarkRegionTempLeft.dMarkHeight = dMarkHeight;
+    				
+    				pMarkRegionArray.push(MarkRegionTempLeft);
+
+    				//Right
+    				MarkRegionTempRight.dPositionX = ((dScanRangeLeft + dScanRangeRight) / 2 + dScanRangeRight) / 2;
+    				MarkRegionTempRight.dPositionY = dPanelBottom;
+    				MarkRegionTempRight.iMarkDirectionType = 1;
+    				MarkRegionTempRight.iIPIndex = iIPIndex;
+    				MarkRegionTempRight.iScanIndex = iScanIndex;
+    				MarkRegionTempRight.iSizeWidth = Math.round(dMarkWidth / dResolutionX);
+    				MarkRegionTempRight.iSizeHeight = Math.round(dMarkHeight / dResolutionY );
+    				MarkRegionTempRight.dMarkWidth = dMarkWidth;
+					MarkRegionTempRight.dMarkHeight = dMarkHeight;
+    				
+    				pMarkRegionArray.push(MarkRegionTempRight);
+    			}
+    		}
+    	}
+    	
+    	//Top
+    	let {iIP:iIPIndex_Left2, iScan:iScanIndex_Left2} = this.JudgeIPScan_UM(dPanelLeft, dPanelTop);
+    	
+    	if(iIPIndex_Left2 == undefined || iScanIndex_Left2 == undefined)
+    	{
+    		iIPIndex_Left = 0;
+    		iIPIndex_Right = -1;
+    		iScanIndex_Left = 0;
+    		iScanIndex_Right = -1;
+    	}else{
+    		iIPIndex_Left =iIPIndex_Left2;
+    		iScanIndex_Left = iScanIndex_Left2;
+    	}
+    	
+    	let {iIP:iIPIndex_Right2, iScan:iScanIndex_Right2} = this.JudgeIPScan_UM(dPanelRight, dPanelTop);
+    	
+    	if(iIPIndex_Right2 == undefined || iScanIndex_Right2 == undefined)
+    	{
+    		iIPIndex_Left = 0;
+    		iIPIndex_Right = -1;
+    		iScanIndex_Left = 0;
+    		iScanIndex_Right = -1;
+    	}else{
+    		iIPIndex_Right =iIPIndex_Right2;
+    		iScanIndex_Right = iScanIndex_Right2;
+    	}
+    	
+    	for(var iIPIndex = iIPIndex_Left; iIPIndex <= iIPIndex_Right; iIPIndex ++)
+    	{
+    		var iScanIndexMin;
+    		var iScanIndexMax;
+
+    		if(iIPIndex == iIPIndex_Left)
+    		{
+    			iScanIndexMin = iScanIndex_Left;
+    		}
+    		else
+    		{
+    			iScanIndexMin = 0;
+    		}
+
+    		if(iIPIndex == iIPIndex_Right)
+    		{
+    			iScanIndexMax = iScanIndex_Right;
+    		}
+    		else
+    		{
+    			iScanIndexMax = this.mpMachinePara.iTotalScan - 1;
+    		}
+
+    		for(var iScanIndex = iScanIndexMin; iScanIndex <= iScanIndexMax; iScanIndex ++)
+    		{
+    			dScanRangeLeft = this.mpMachinePara.aIPParaArray[iIPIndex].aScanParaArray[iScanIndex].dRange_Left;
+    			dScanRangeRight = this.mpMachinePara.aIPParaArray[iIPIndex].aScanParaArray[iScanIndex].dRange_Right;
+    			dResolutionX = this.mpMachinePara.aIPParaArray[iIPIndex].aScanParaArray[iScanIndex].dResolutionX;
+    			dResolutionY = this.mpMachinePara.aIPParaArray[iIPIndex].aScanParaArray[iScanIndex].dResolutionY;
+
+    			if(iIPIndex == iIPIndex_Left2 && iScanIndex == iScanIndex_Left2)
+    			{
+    				if(Math.abs(dScanRangeRight - dPanelLeft) > (dResolutionX * WIDTH_LIMIT_FOR_SEGMENT))
+    				{
+    					bNeedSegment = true;
+    				}
+    				else
+    				{
+    					bNeedSegment = false;
+    				}
+
+    				if(bNeedSegment)
+    				{
+    					var MarkRegionTempLeft = new Object();
+    					var MarkRegionTempRight = new Object();
+
+    					//Left
+    					MarkRegionTempLeft.dPositionX = ((dScanRangeRight + dPanelLeft) / 2 + dPanelLeft) / 2;
+    					MarkRegionTempLeft.dPositionY = dPanelTop;
+    					MarkRegionTempLeft.iMarkDirectionType = 1;
+    					MarkRegionTempLeft.iIPIndex = iIPIndex;
+    					MarkRegionTempLeft.iScanIndex = iScanIndex;
+    					MarkRegionTempLeft.iSizeWidth = Math.round(dMarkWidth / dResolutionX );
+    					MarkRegionTempLeft.iSizeHeight = Math.round(dMarkHeight / dResolutionY );
+    					MarkRegionTempLeft.dMarkWidth = dMarkWidth;
+    					MarkRegionTempLeft.dMarkHeight = dMarkHeight;
+
+    					pMarkRegionArray.push(MarkRegionTempLeft);
+
+    					//Right
+    					MarkRegionTempRight.dPositionX = ((dScanRangeRight + dPanelLeft) / 2 + dScanRangeRight) / 2;
+    					MarkRegionTempRight.dPositionY = dPanelTop;
+    					MarkRegionTempRight.iMarkDirectionType = 1;
+    					MarkRegionTempRight.iIPIndex = iIPIndex;
+    					MarkRegionTempRight.iScanIndex = iScanIndex;
+    					MarkRegionTempRight.iSizeWidth = Math.round(dMarkWidth / dResolutionX );
+    					MarkRegionTempRight.iSizeHeight = Math.round(dMarkHeight / dResolutionY );
+    					MarkRegionTempRight.dMarkWidth = dMarkWidth;
+    					MarkRegionTempRight.dMarkHeight = dMarkHeight;
+
+    					pMarkRegionArray.push(MarkRegionTempRight);
+    				}
+    				else
+    				{
+    					var MarkRegionTemp = new Object();
+
+    					MarkRegionTemp.dPositionX = (dScanRangeRight + dPanelLeft) / 2;
+    					
+    					if(MarkRegionTemp.dPositionX > dScanRangeRight - dMarkWidth / 2)
+    					{
+    						MarkRegionTemp.dPositionX = dScanRangeRight - dMarkWidth;
+    					}
+    					
+    					MarkRegionTemp.dPositionY = dPanelTop;
+    					MarkRegionTemp.iMarkDirectionType = 1;
+    					MarkRegionTemp.iIPIndex = iIPIndex;
+    					MarkRegionTemp.iScanIndex = iScanIndex;
+    					MarkRegionTemp.iSizeWidth = Math.round(dMarkWidth / dResolutionX );
+    					MarkRegionTemp.iSizeHeight = Math.round(dMarkHeight / dResolutionY);
+    					MarkRegionTemp.dMarkWidth = dMarkWidth;
+    					MarkRegionTemp.dMarkHeight = dMarkHeight;
+
+    					pMarkRegionArray.push(MarkRegionTemp);
+    				}
+    			}
+    			else if(iIPIndex == iIPIndex_Right2 && iScanIndex == iScanIndex_Right2)
+    			{
+    				if(Math.abs(dPanelRight - dScanRangeLeft) > (dResolutionX * WIDTH_LIMIT_FOR_SEGMENT))
+    				{
+    					bNeedSegment = true;
+    				}
+    				else
+    				{
+    					bNeedSegment = false;
+    				}
+
+    				if(bNeedSegment)
+    				{
+    					var MarkRegionTempLeft = new Object();
+    					var MarkRegionTempRight = new Object();
+
+    					//Left
+    					MarkRegionTempLeft.dPositionX = ((dScanRangeLeft + dPanelRight) / 2 + dScanRangeLeft) / 2;
+    					MarkRegionTempLeft.dPositionY = dPanelTop;
+    					MarkRegionTempLeft.iMarkDirectionType = 1;
+    					MarkRegionTempLeft.iIPIndex = iIPIndex;
+    					MarkRegionTempLeft.iScanIndex = iScanIndex;
+    					MarkRegionTempLeft.iSizeWidth = Math.round(dMarkWidth / dResolutionX );
+    					MarkRegionTempLeft.iSizeHeight = Math.round(dMarkHeight / dResolutionY);
+    					MarkRegionTempLeft.dMarkWidth = dMarkWidth;
+    					MarkRegionTempLeft.dMarkHeight = dMarkHeight;
+
+    					pMarkRegionArray.push(MarkRegionTempLeft);
+
+    					//Right
+    					MarkRegionTempRight.dPositionX = ((dScanRangeLeft + dPanelRight) / 2 + dPanelRight) / 2;
+    					MarkRegionTempRight.dPositionY = dPanelTop;
+    					MarkRegionTempRight.iMarkDirectionType = 1;
+    					MarkRegionTempRight.iIPIndex = iIPIndex;
+    					MarkRegionTempRight.iScanIndex = iScanIndex;
+    					MarkRegionTempRight.iSizeWidth = Math.round(dMarkWidth / dResolutionX );
+    					MarkRegionTempRight.iSizeHeight = Math.round(dMarkHeight / dResolutionY );
+    					MarkRegionTempRight.dMarkWidth = dMarkWidth;
+    					MarkRegionTempRight.dMarkHeight = dMarkHeight;
+
+    					pMarkRegionArray.push(MarkRegionTempRight);
+    				}
+    				else
+    				{
+    					var MarkRegionTemp = new object();
+
+    					MarkRegionTemp.dPositionX = (dScanRangeLeft + dPanelRight) / 2;
+
+    					if(MarkRegionTemp.dPositionX < dScanRangeLeft + dMarkWidth / 2)
+    					{
+    						MarkRegionTemp.dPositionX = dScanRangeLeft + dMarkWidth;
+    					}
+
+    					MarkRegionTemp.dPositionY = dPanelTop;
+    					MarkRegionTemp.iMarkDirectionType = 1;
+    					MarkRegionTemp.iIPIndex = iIPIndex;
+    					MarkRegionTemp.iScanIndex = iScanIndex;
+    					MarkRegionTemp.iSizeWidth = Math.round(dMarkWidth / dResolutionX );
+    					MarkRegionTemp.iSizeHeight = Math.round(dMarkHeight / dResolutionY );
+    					MarkRegionTemp.dMarkWidth = dMarkWidth;
+        				MarkRegionTemp.dMarkHeight = dMarkHeight;
+
+    					pMarkRegionArray.push(MarkRegionTemp);
+    				}
+    			}
+    			else
+    			{
+    				var MarkRegionTempLeft = new Object();
+    				var MarkRegionTempRight = new Object();
+
+    				//Left
+    				MarkRegionTempLeft.dPositionX = ((dScanRangeLeft + dScanRangeRight) / 2 + dScanRangeLeft) / 2;
+    				MarkRegionTempLeft.dPositionY = dPanelTop;
+    				MarkRegionTempLeft.iMarkDirectionType = 1;
+    				MarkRegionTempLeft.iIPIndex = iIPIndex;
+    				MarkRegionTempLeft.iScanIndex = iScanIndex;
+    				MarkRegionTempLeft.iSizeWidth = Math.round(dMarkWidth / dResolutionX );
+    				MarkRegionTempLeft.iSizeHeight = Math.round(dMarkHeight / dResolutionY );
+    				MarkRegionTempLeft.dMarkWidth = dMarkWidth;
+    				MarkRegionTempLeft.dMarkHeight = dMarkHeight;
+
+
+    				pMarkRegionArray.push(MarkRegionTempLeft);
+
+    				//Right
+    				MarkRegionTempRight.dPositionX = ((dScanRangeLeft + dScanRangeRight) / 2 + dScanRangeRight) / 2;
+    				MarkRegionTempRight.dPositionY = dPanelTop;
+    				MarkRegionTempRight.iMarkDirectionType = 1;
+    				MarkRegionTempRight.iIPIndex = iIPIndex;
+    				MarkRegionTempRight.iScanIndex = iScanIndex;
+    				MarkRegionTempRight.iSizeWidth = Math.round(dMarkWidth / dResolutionX );
+    				MarkRegionTempRight.iSizeHeight = Math.round(dMarkHeight / dResolutionY );
+    				MarkRegionTempRight.dMarkWidth = dMarkWidth;
+					MarkRegionTempRight.dMarkHeight = dMarkHeight;
+
+    				
+    				pMarkRegionArray.push(MarkRegionTempRight);
+    			}
+    		}
+    	}
+
+    	return pMarkRegionArray;
+    }
+   
 });
 
 

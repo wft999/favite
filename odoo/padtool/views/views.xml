@@ -14,6 +14,7 @@
                 <div class="oe_clear"/>
                 <group>
                 	<group>
+                		<field name="GlassToGlassMode"/>
                 		<field name="display_name" invisible="1" />
                         <field name="GolbalToleranceRegularX" />
                         <field name="GolbalToleranceRegularY" />
@@ -21,12 +22,11 @@
                     	<field name="GolbalToleranceUnregularY"/>
                 	</group>
                 	<group>
-                    	<field name="GolbalIndentRegularX"/>
-                    	<field name="GolbalIndentRegularY"/>
-                    	<field name="GolbalIndentUnregularX"/>
-                    	<field name="GolbalIndentUnregularY"/>
-                    	<field name="GlassToGlassMode"/>
-                   		<field name="NeglectInspIfNoMarkResult"/>
+                		<field name="BMMode" />
+                    	<field name="BMPeriodX0"/>
+                    	<field name="BMPeriodY0"/>
+                    	<field name="BMPeriodX1"/>
+                    	<field name="BMPeriodY1"/>
                  	</group>
                	</group>
         	</sheet>
@@ -56,7 +56,7 @@
 
 
     <!-- Top menu item -->
-    <menuitem name="Pad Tool" id="padtool.menu_root"/>
+    <menuitem name="Pad" id="padtool.menu_root"/>
     <!-- menu categories -->
     <menuitem name="Glass Data" id="padtool.menu_glass_root" parent="padtool.menu_root" sequence="101"/>
     

@@ -119,11 +119,13 @@ var Glassmap = Widget.extend(ControlPanelMixin,{
 	    		var right = parseFloat(pos[0]);
 	    		var bottom = parseFloat(pos[1]);
 	    		
-	    		left = left * Math.cos(-this.glass_angle) + bottom * Math.sin(-this.glass_angle) + this.glass_center_x;
-	    		bottom = left * Math.sin(-this.glass_angle) + bottom * Math.cos(-this.glass_angle) + this.glass_center_y;
+	    		var tmp = left * Math.cos(-this.glass_angle) + bottom * Math.sin(-this.glass_angle) + this.glass_center_x;
+	    		bottom = -left * Math.sin(-this.glass_angle) + bottom * Math.cos(-this.glass_angle) + this.glass_center_y;
+	    		left = tmp;
 	    		
-	    		right = right * Math.cos(-this.glass_angle) + top * Math.sin(-this.glass_angle) + this.glass_center_x;
-	    		top = right * Math.sin(-this.glass_angle) + top * Math.cos(-this.glass_angle) + this.glass_center_y;
+	    		tmp = right * Math.cos(-this.glass_angle) + top * Math.sin(-this.glass_angle) + this.glass_center_x;
+	    		top = -right * Math.sin(-this.glass_angle) + top * Math.cos(-this.glass_angle) + this.glass_center_y;
+	    		right = tmp;
 	    		
 	    		if(dOutputX > left && dOutputX < right && dOutputY < bottom && dOutputY > top){
 	    			var name = this.bifConf['auops.subpanel.subpanel_'+id+'.global_subpanel_data'];
@@ -220,7 +222,7 @@ var Glassmap = Widget.extend(ControlPanelMixin,{
     		var x = (left + right)/2;
     		var y = (top + bottom)/2;
     		var panel_center_x = x * Math.cos(-this.glass_angle) + y * Math.sin(-this.glass_angle) + this.glass_center_x;
-    		var panel_center_y = x * Math.sin(-this.glass_angle) + y * Math.cos(-this.glass_angle) + this.glass_center_y;
+    		var panel_center_y = -x * Math.sin(-this.glass_angle) + y * Math.cos(-this.glass_angle) + this.glass_center_y;
     		
     		var innerFrame = null;
      		var outerFrame = null;

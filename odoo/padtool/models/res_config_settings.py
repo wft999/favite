@@ -7,12 +7,12 @@ from odoo import api, fields, models
 class ResConfigSettings(models.TransientModel):
     _inherit = 'res.config.settings'
     
-    hawk_width = fields.Integer( string="Hwakeye window width",default=500,help="Gives the sequence of this line when displaying the invoice.")
-    hawk_height = fields.Integer( string="Hwakeye window height",default=500,help="Gives the sequence of this line when displaying the invoice.")
+    hawk_width = fields.Integer( string="Hwakeye window width",default=5000,help="Gives the sequence of this line when displaying the invoice.")
+    hawk_height = fields.Integer( string="Hwakeye window height",default=5000,help="Gives the sequence of this line when displaying the invoice.")
     
-    region_width = fields.Integer( string="Region width",default=500,help="Gives the sequence of this line when displaying the invoice.")
-    region_height = fields.Integer( string="Region height",default=500,help="Gives the sequence of this line when displaying the invoice.")
-    region_overlap = fields.Integer( string="Region overlap",default=50,help="Gives the sequence of this line when displaying the invoice.")
+    region_width = fields.Integer( string="Region width",default=50000,help="Gives the sequence of this line when displaying the invoice.")
+    region_height = fields.Integer( string="Region height",default=50000,help="Gives the sequence of this line when displaying the invoice.")
+    region_overlap = fields.Integer( string="Region overlap",default=5000,help="Gives the sequence of this line when displaying the invoice.")
 
 
     @api.model
@@ -20,11 +20,11 @@ class ResConfigSettings(models.TransientModel):
         res = super(ResConfigSettings, self).get_values()
         res.update(
             
-            hawk_width=int(self.env['ir.config_parameter'].sudo().get_param('padtool.hawk_width',500)),
-            hawk_height=int(self.env['ir.config_parameter'].sudo().get_param('padtool.hawk_height',500)),
-            region_width=int(self.env['ir.config_parameter'].sudo().get_param('padtool.region_width',500)),
-            region_height=int(self.env['ir.config_parameter'].sudo().get_param('padtool.region_height',500)),
-            region_overlap=int(self.env['ir.config_parameter'].sudo().get_param('padtool.region_overlap',50)),
+            hawk_width=int(self.env['ir.config_parameter'].sudo().get_param('padtool.hawk_width',5000)),
+            hawk_height=int(self.env['ir.config_parameter'].sudo().get_param('padtool.hawk_height',5000)),
+            region_width=int(self.env['ir.config_parameter'].sudo().get_param('padtool.region_width',50000)),
+            region_height=int(self.env['ir.config_parameter'].sudo().get_param('padtool.region_height',50000)),
+            region_overlap=int(self.env['ir.config_parameter'].sudo().get_param('padtool.region_overlap',5000)),
             
         )
         return res
