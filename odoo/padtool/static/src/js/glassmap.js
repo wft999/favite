@@ -234,82 +234,13 @@ var Glassmap = Widget.extend(ControlPanelMixin,{
      				let {dOutputX:x, dOutputY:y} = self.coordinate.UMCoordinateToGlassMapCoordinate(ux,uy)
      				obj.addPoint({x,y:self.image.height-y});
      			})
-     			
-     			if(pad.padType == 'frame'){
-     		 		if(innerFrame == null)
-     		 			innerFrame = obj;
-     		 		else if(outerFrame == null)
-     		 			outerFrame = obj;
-     		 		obj.crosses.forEach(function(cross){
-     					cross.set({visible:false});
-     				});
-     			}
     		});
-    		this._drawRegion(innerFrame,outerFrame);
 
     		id++;
  		}
  	},
  	
- 	_drawRegion: function(innerFrame,outerFrame){
- 	    var dResolutionY =  this.coordinate.mpMachinePara.aIPParaArray[0].aScanParaArray[0].dResolutionY;
- 	    var region_overlap = this.coordinate.gmpGlassMapPara.dRatioY * this.globalConf.region_overlap/dResolutionY;
- 	    var region_height = this.coordinate.gmpGlassMapPara.dRatioY * this.globalConf.region_height/dResolutionY;
-
- 		 var top = innerFrame.crosses[1].top - region_overlap;
- 		 while(true){
- 			 var height = region_height;
- 			 var nextTop = top + region_height - region_overlap;
- 			if((nextTop + region_height)  > innerFrame.crosses[0].top + region_overlap ){
- 				height = innerFrame.crosses[0].top + region_overlap - top;
- 			}
- 			var rect = new Mycanvas.Rect({
- 				left:outerFrame.crosses[0].left,
- 				top,
- 				stroke: 'blue',
- 				width:innerFrame.crosses[0].left - outerFrame.crosses[0].left,
- 				height,
- 				padType:"frame_region"
- 			});
- 			this.map.add(rect);
- 			
- 			rect = new Mycanvas.Rect({
-				left:innerFrame.crosses[1].left,
-				top,
-				stroke: 'blue',
-				width:outerFrame.crosses[1].left - innerFrame.crosses[1].left,
-				height,
-				padType:"frame_region"
-			});
-			this.map.add(rect);
- 			
- 			top = nextTop;
- 			if((top + region_height) > innerFrame.crosses[0].top  + region_overlap)
- 				break;
- 		 }
- 		 
- 		var rect = new Mycanvas.Rect({
-			left:outerFrame.crosses[0].left,
-			top:outerFrame.crosses[1].top,
-			stroke: 'blue',
-			width:outerFrame.crosses[1].left - outerFrame.crosses[0].left,
-			height:innerFrame.crosses[1].top - outerFrame.crosses[1].top,
-			padType:"frame_region"
-		});
-		this.map.add(rect);
-		
-		rect = new Mycanvas.Rect({
-			left:outerFrame.crosses[0].left,
-			top:innerFrame.crosses[0].top,
-			stroke: 'blue',
-			width:outerFrame.crosses[1].left - outerFrame.crosses[0].left,
-			height:outerFrame.crosses[0].top - innerFrame.crosses[0].top,
-			padType:"frame_region"
-		});
-		this.map.add(rect);
-
- 	 },
- 	
+ 
  	_loadPad: function(){
  		var self = this;
 

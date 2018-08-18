@@ -291,7 +291,7 @@ class Pad(models.TransientModel):
             strParameter += 'BMPeriodX1 = %s\n' % parConf['OPT']['BMPeriodX1']
             strParameter += 'BMPeriodY1 = %s\n' % parConf['OPT']['BMPeriodY1']
 
-        
+        region_id = 0
         strFrame = ''
         strRegion = ''
 
@@ -303,61 +303,20 @@ class Pad(models.TransientModel):
  
         strPad_Inspect = ''
         Pad_Inspect_Number = 0
-        
-        width = 0
-        max_height = 0
-        subMarkStartx = 0;
-        strSubMark = 'SubMarkNumber = '+str(len(pad['pMarkRegionArray']))+'\n'
-        region_list = []
-        for obj in pad['pMarkRegionArray']:
-            height = 0     
-            block_list = []
-            width += obj['blocks'][0]['iInterSectionWidth']
-            for block in obj['blocks']:
-                imgFile = root + '/'+ glassName+'/JpegFile/IP'+str(block['iIPIndex']+1)+'/'+'AoiL_IP'+str(block['iIPIndex'])+'_scan'+str(block['iScanIndex'])+'_block'+str(block['iBlockIndex'])+'.jpg'
-                with Image.open(imgFile) as im:
-                    left = block['iInterSectionStartX']
-                    right = block['iInterSectionStartX'] + block['iInterSectionWidth']
-                    upper = im.height - (block['iInterSectionStartY'] + block['iInterSectionHeight'])
-                    lower = im.height - block['iInterSectionStartY']
-                    im = im.transpose(Image.FLIP_TOP_BOTTOM)
-                    region = im.crop((left ,upper, right, lower))
-                    block_list.append(region)
-                    height += (lower-upper)
-                        
-            strSubMark += 'SubMark'+str(len(region_list))+'.size = '+ str(obj['iSizeWidth']) +','+str(obj['iSizeHeight'])+'\n'
-            strSubMark += 'SubMark'+str(len(region_list))+'.startx = '+ str(subMarkStartx) + '\n'
-            strSubMark += 'SubMark'+str(len(region_list))+'.pos = '+str(obj['dPositionX']-pad['dPanelCenterX'])+','+str(obj['dPositionY']-pad['dPanelCenterY'])+'\n'
-            strSubMark += 'SubMark'+str(len(region_list))+'.ipindex = '+str(obj['iIPIndex'])+'\n'
-            strSubMark += 'SubMark'+str(len(region_list))+'.scanindex = '+str(obj['iScanIndex'])+'\n'
-            strSubMark += 'SubMark'+str(len(region_list))+'.horizontal = '+str(obj['iMarkDirectionType'])+'\n'
-            
-            subMarkStartx += obj['iSizeWidth']    
-            max_height = height if height > max_height else max_height   
-            region_list.append(block_list)
-            
-        if len(region_list):
-            markFile = root + '/'+glassName +'/'+ panelName +'/subMark.bmp'
-            mark = Image.new('L', (width,max_height))
-            left = 0
-            for blocks in region_list:
-                lower = max_height
-                for region in blocks:
-                    upper = lower - region.size[1]
-                    right = left+region.size[0]
-                    mark.paste(region, (left ,upper, right, lower))
-                    
-                    lower = max_height - region.size[1]
-                left += blocks[0].size[0]
-            mark.save(markFile)
-                
-        width = 0
-        max_height = 0
+   
         innerFrame = None
         outrtFrame = None   
+        
         strMainMark = ''
-        mainMarkStartx = 0    
-        region_list = []
+        strSubMark = ''
+        mainMarkWidth = 0
+        subMarkWidth = 0
+        mainMarkHeight = 0
+        subMarkHeight = 0
+        mainMarkStartx = 0
+        subMarkStartx = 0    
+        mainMarkList = []
+        subMarkList = []
         for obj in pad['objs']:
             if obj['padType'] == 'frame':
                 if innerFrame == None:
@@ -394,8 +353,11 @@ class Pad(models.TransientModel):
             elif obj['padType'] == 'mainMark':
                 height = 0     
                 block_list = []
-                width += obj['blocks'][0]['iInterSectionWidth']
+                mainMarkWidth += obj['blocks'][0]['iInterSectionWidth']
                 for block in obj['blocks']:
+                    height += block['iInterSectionHeight']
+                    if not pad['isMainMarkModified']:
+                        continue
                     imgFile = root + '/'+ glassName+'/JpegFile/IP'+str(block['iIPIndex']+1)+'/'+'AoiL_IP'+str(block['iIPIndex'])+'_scan'+str(block['iScanIndex'])+'_block'+str(block['iBlockIndex'])+'.jpg'
                     with Image.open(imgFile) as im:
                         left = block['iInterSectionStartX']
@@ -405,17 +367,56 @@ class Pad(models.TransientModel):
                         im = im.transpose(Image.FLIP_TOP_BOTTOM)
                         region = im.crop((left ,upper, right, lower))
                         block_list.append(region)
-                        height += (lower-upper)
                         
-                strMainMark += 'MainMark'+str(len(region_list))+'.size = '+ str(block['iInterSectionWidth']) +','+str(height)+'\n'
-                strMainMark += 'MainMark'+str(len(region_list))+'.startx = '+ str(mainMarkStartx) + '\n'
-                strMainMark += 'MainMark'+str(len(region_list))+'.pos = '+str((obj['points'][0]['ux'] + obj['points'][1]['ux'])/2-pad['dPanelCenterX'])+','+str((obj['points'][0]['uy']+obj['points'][1]['uy'])/2-pad['dPanelCenterY'])+'\n'
-                strMainMark += 'MainMark'+str(len(region_list))+'.ipindex = '+str(block['iIPIndex'])+'\n'
-                strMainMark += 'MainMark'+str(len(region_list))+'.scanindex = '+str(block['iScanIndex'])+'\n'
+                strMainMark += 'MainMark'+str(len(mainMarkList))+'.size = '+ str(block['iInterSectionWidth']) +','+str(height)+'\n'
+                strMainMark += 'MainMark'+str(len(mainMarkList))+'.startx = '+ str(mainMarkStartx) + '\n'
+                strMainMark += 'MainMark'+str(len(mainMarkList))+'.pos = '+str((obj['points'][0]['ux'] + obj['points'][1]['ux'])/2-pad['dPanelCenterX'])+','+str((obj['points'][0]['uy']+obj['points'][1]['uy'])/2-pad['dPanelCenterY'])+'\n'
+                strMainMark += 'MainMark'+str(len(mainMarkList))+'.ipindex = '+str(block['iIPIndex'])+'\n'
+                strMainMark += 'MainMark'+str(len(mainMarkList))+'.scanindex = '+str(block['iScanIndex'])+'\n'
                 
                 mainMarkStartx += block['iInterSectionWidth']
-                max_height = height if height > max_height else max_height   
-                region_list.append(block_list)
+                mainMarkHeight = height if height > mainMarkHeight else mainMarkHeight   
+                if len(block_list):
+                    mainMarkList.append(block_list)
+            elif obj['padType'] == 'subMark':
+                height = 0     
+                block_list = []
+                subMarkWidth += obj['blocks'][0]['iInterSectionWidth']
+                for block in obj['blocks']:
+                    height += block['iInterSectionHeight']
+                    if not pad['isSubMarkModified']:
+                        continue
+                    
+                    imgFile = root + '/'+ glassName+'/JpegFile/IP'+str(block['iIPIndex']+1)+'/'+'AoiL_IP'+str(block['iIPIndex'])+'_scan'+str(block['iScanIndex'])+'_block'+str(block['iBlockIndex'])+'.jpg'
+                    with Image.open(imgFile) as im:
+                        left = block['iInterSectionStartX']
+                        right = block['iInterSectionStartX'] + block['iInterSectionWidth']
+                        upper = im.height - (block['iInterSectionStartY'] + block['iInterSectionHeight'])
+                        lower = im.height - block['iInterSectionStartY']
+                        im = im.transpose(Image.FLIP_TOP_BOTTOM)
+                        region = im.crop((left ,upper, right, lower))
+                        block_list.append(region)
+
+                strSubMark += 'SubMark'+str(len(subMarkList))+'.size = '+ str(block['iInterSectionWidth']) +','+str(height)+'\n'
+                strSubMark += 'SubMark'+str(len(subMarkList))+'.startx = '+ str(subMarkStartx) + '\n'
+                strSubMark += 'SubMark'+str(len(subMarkList))+'.pos = '+str((obj['points'][0]['ux'] + obj['points'][1]['ux'])/2-pad['dPanelCenterX'])+','+str((obj['points'][0]['uy']+obj['points'][1]['uy'])/2-pad['dPanelCenterY'])+'\n'
+                strSubMark += 'SubMark'+str(len(subMarkList))+'.ipindex = '+str(block['iIPIndex'])+'\n'
+                strSubMark += 'SubMark'+str(len(subMarkList))+'.scanindex = '+str(block['iScanIndex'])+'\n'
+                strSubMark += 'SubMark'+str(len(subMarkList))+'.horizontal = '+str(obj['iMarkDirectionType'])+'\n'
+                
+                subMarkStartx += block['iInterSectionWidth']
+                subMarkHeight = height if height > subMarkHeight else subMarkHeight   
+                if len(block_list):
+                    subMarkList.append(block_list)
+            elif obj['padType'] == 'region':
+                regionLeft = obj['points'][0]['ux'] - pad['dPanelCenterX']
+                regionBottom = obj['points'][0]['uy'] - pad['dPanelCenterY']
+                regionRight = obj['points'][1]['ux'] - pad['dPanelCenterX']
+                regionTop = obj['points'][1]['uy'] - pad['dPanelCenterY']
+                
+                strRegion += 'Region'+str(region_id)+'.region = '+str(regionLeft)+','+str(regionBottom)+';'+str(regionRight)+','+str(regionBottom)+';'+str(regionRight)+','+str(regionTop)+';'+str(regionLeft)+','+str(regionTop)+'\n'
+                strRegion += 'Region'+str(region_id)+'.iFrameNo = '+str(obj['iFrameNo'])+'\n'
+                region_id = region_id + 1
                 
         if innerFrame is not None  and outrtFrame is not None:
             frameLeft0 = outrtFrame['points'][0]['ux']-pad['dPanelCenterX']
@@ -424,10 +425,6 @@ class Pad(models.TransientModel):
             frameBottom0 = innerFrame['points'][0]['uy']-pad['dPanelCenterY'] - pad['region_overlap']
             strFrame += 'PadFrameNum = 4\n'
             strFrame += 'PadFrame0.iDirection = 0\n'
-            #strFrame += 'PadFrame0.postion_topleft = '+str(frameLeft0)+','+str(frameTop0)+'\n'
-            #strFrame += 'PadFrame0.postion_topright = '+str(frameRight0)+','+str(frameTop0)+'\n'
-            #strFrame += 'PadFrame0.postion_bottomleft = '+str(frameLeft0)+','+str(frameBottom0)+'\n'
-            #strFrame += 'PadFrame0.postion_bottomright = '+str(frameRight0)+','+str(frameBottom0)+'\n'
             strFrame += 'PadFrame0.postion_topleft = '+str(frameLeft0)+','+str(frameBottom0)+'\n'
             strFrame += 'PadFrame0.postion_topright = '+str(frameRight0)+','+str(frameBottom0)+'\n'
             strFrame += 'PadFrame0.postion_bottomleft = '+str(frameLeft0)+','+str(frameTop0)+'\n'
@@ -438,10 +435,6 @@ class Pad(models.TransientModel):
             frameTop1 = innerFrame['points'][0]['uy']-pad['dPanelCenterY']
             frameBottom1 = outrtFrame['points'][0]['uy']-pad['dPanelCenterY']
             strFrame += 'PadFrame1.iDirection = 1\n'
-            #strFrame += 'PadFrame1.postion_topleft = '+str(frameLeft1)+','+str(frameTop1)+'\n'
-            #strFrame += 'PadFrame1.postion_topright = '+str(frameRight1)+','+str(frameTop1)+'\n'
-            #strFrame += 'PadFrame1.postion_bottomleft = '+str(frameLeft1)+','+str(frameBottom1)+'\n'
-            #strFrame += 'PadFrame1.postion_bottomright = '+str(frameRight1)+','+str(frameBottom1)+'\n'
             strFrame += 'PadFrame1.postion_topleft = '+str(frameLeft1)+','+str(frameBottom1)+'\n'
             strFrame += 'PadFrame1.postion_topright = '+str(frameRight1)+','+str(frameBottom1)+'\n'
             strFrame += 'PadFrame1.postion_bottomleft = '+str(frameLeft1)+','+str(frameTop1)+'\n'
@@ -452,10 +445,6 @@ class Pad(models.TransientModel):
             frameTop2 = innerFrame['points'][1]['uy']-pad['dPanelCenterY'] + pad['region_overlap']
             frameBottom2 = innerFrame['points'][0]['uy']-pad['dPanelCenterY'] - pad['region_overlap']
             strFrame += 'PadFrame2.iDirection = 2\n'
-            #strFrame += 'PadFrame2.postion_topleft = '+str(frameLeft2)+','+str(frameTop2)+'\n'
-            #strFrame += 'PadFrame2.postion_topright = '+str(frameRight2)+','+str(frameTop2)+'\n'
-            #strFrame += 'PadFrame2.postion_bottomleft = '+str(frameLeft2)+','+str(frameBottom2)+'\n'
-            #strFrame += 'PadFrame2.postion_bottomright = '+str(frameRight2)+','+str(frameBottom2)+'\n'
             strFrame += 'PadFrame2.postion_topleft = '+str(frameLeft2)+','+str(frameBottom2)+'\n'
             strFrame += 'PadFrame2.postion_topright = '+str(frameRight2)+','+str(frameBottom2)+'\n'
             strFrame += 'PadFrame2.postion_bottomleft = '+str(frameLeft2)+','+str(frameTop2)+'\n'
@@ -466,70 +455,52 @@ class Pad(models.TransientModel):
             frameTop3 = outrtFrame['points'][1]['uy']-pad['dPanelCenterY']
             frameBottom3 = innerFrame['points'][1]['uy']-pad['dPanelCenterY']
             strFrame += 'PadFrame3.iDirection = 3\n'
-            #strFrame += 'PadFrame3.postion_topleft = '+str(frameLeft3)+','+str(frameTop3)+'\n'
-            #strFrame += 'PadFrame3.postion_topright = '+str(frameRight3)+','+str(frameTop3)+'\n'
-            #strFrame += 'PadFrame3.postion_bottomleft = '+str(frameLeft3)+','+str(frameBottom3)+'\n'
-            #strFrame += 'PadFrame3.postion_bottomright = '+str(frameRight3)+','+str(frameBottom3)+'\n'
             strFrame += 'PadFrame3.postion_topleft = '+str(frameLeft3)+','+str(frameBottom3)+'\n'
             strFrame += 'PadFrame3.postion_topright = '+str(frameRight3)+','+str(frameBottom3)+'\n'
             strFrame += 'PadFrame3.postion_bottomleft = '+str(frameLeft3)+','+str(frameTop3)+'\n'
             strFrame += 'PadFrame3.postion_bottomright = '+str(frameRight3)+','+str(frameTop3)+'\n'
             
-            region_id = 0
-            regionTop = frameTop0
-            while True:
-                regionHeight = pad['region_height']
-                nextRegionTop = regionTop - pad['region_height'] + pad['region_overlap']
-                if (nextRegionTop - pad['region_height'])  < frameBottom0:
-                    regionHeight =  regionTop - frameBottom0;
-                    
-                regionLeft0 = frameLeft0
-                regionRight0 = frameRight0
-                regionLeft2 = frameLeft2
-                regionRight2 = frameRight2
-                regionBottom = regionTop - regionHeight
-                strRegion += 'Region'+str(region_id)+'.region = '+str(regionLeft0)+','+str(regionBottom)+';'+str(regionRight0)+','+str(regionBottom)+';'+str(regionRight0)+','+str(regionTop)+';'+str(regionLeft0)+','+str(regionTop)+'\n'
-                strRegion += 'Region'+str(region_id)+'.iFrameNo = 0\n'
-                region_id = region_id + 1
-                strRegion += 'Region'+str(region_id)+'.region = '+str(regionLeft2)+','+str(regionBottom)+';'+str(regionRight2)+','+str(regionBottom)+';'+str(regionRight2)+','+str(regionTop)+';'+str(regionLeft2)+','+str(regionTop)+'\n'    
-                strRegion += 'Region'+str(region_id)+'.iFrameNo = 2\n'
-                region_id = region_id + 1
-                    
-                regionTop = nextRegionTop
-                if (regionTop - pad['region_height']) < frameBottom0:
-                    break
-                
-            strRegion += 'Region'+str(region_id)+'.region = '+str(frameLeft1)+','+str(frameBottom1)+';'+str(frameRight1)+','+str(frameBottom1)+';'+str(frameRight1)+','+str(frameTop1)+';'+str(frameLeft1)+','+str(frameTop1)+'\n'
-            strRegion += 'Region'+str(region_id)+'.iFrameNo = 1\n'
-            region_id = region_id + 1
-            strRegion += 'Region'+str(region_id)+'.region = '+str(frameLeft3)+','+str(frameBottom3)+';'+str(frameRight3)+','+str(frameBottom3)+';'+str(frameRight3)+','+str(frameTop3)+';'+str(frameLeft3)+','+str(frameTop3)+'\n'    
-            strRegion += 'Region'+str(region_id)+'.iFrameNo = 3\n'
-            region_id = region_id + 1
-            strRegion = 'TotalRegionNumber = '+str(region_id)+'\n' + strRegion
-            
-        if len(region_list):
-            strMainMark = 'MainMarkNumber = '+str(len(region_list))+'\n' + strMainMark
+        if len(mainMarkList):
+            strMainMark = 'MainMarkNumber = '+str(len(mainMarkList))+'\n' + strMainMark
             
             markFile = root + '/'+glassName +'/'+ panelName +'/mainMark.bmp'
-            mark = Image.new('L', (width,max_height))
+            mark = Image.new('L', (mainMarkWidth,mainMarkHeight))
             left = 0
-            for blocks in region_list:
-                lower = max_height
+            for blocks in mainMarkList:
+                lower = mainMarkHeight
                 for region in blocks:
                     upper = lower - region.size[1]
                     right = left+region.size[0]
                     mark.paste(region, (left ,upper, right, lower))
                     
-                    lower = max_height - region.size[1]
+                    lower = mainMarkHeight - region.size[1]
                 left += blocks[0].size[0]
-            mark.save(markFile)    
+            mark.save(markFile)  
+            
+        if len(subMarkList):
+            strSubMark = 'SubMarkNumber = '+str(len(subMarkList))+'\n' + strSubMark
+            markFile = root + '/'+glassName +'/'+ panelName +'/subMark.bmp'
+            mark = Image.new('L', (subMarkWidth,subMarkHeight))
+            left = 0
+            for blocks in subMarkList:
+                lower = subMarkHeight
+                for region in blocks:
+                    upper = lower - region.size[1]
+                    right = left+region.size[0]
+                    mark.paste(region, (left ,upper, right, lower))
+                    
+                    lower = subMarkHeight - region.size[1]
+                left += blocks[0].size[0]
+            mark.save(markFile)  
             
         if Pad_Filterpos_Number > 0:
             strPad_Filterpos = 'Pad_Filterpos_Number = '+str(Pad_Filterpos_Number) +'\n' + strPad_Filterpos   
         if Pad_Filter_Number > 0:
             strPad_Filter = 'Pad_Filter_Number = '+str(Pad_Filter_Number) +'\n'+ strPad_Filter 
         if Pad_Inspect_Number > 0:
-            strPad_Inspect = 'Pad_Inspect_Number = '+str(Pad_Inspect_Number) +'\n'+ strPad_Inspect 
+            strPad_Inspect = 'Pad_Inspect_Number = '+str(Pad_Inspect_Number) +'\n'+ strPad_Inspect     
+        if region_id > 0:
+            strRegion = 'TotalRegionNumber = '+str(region_id) +'\n'+ strRegion 
              
         with open(root + '/'+glassName +'/'+ panelName +'/'+ panelName+'.pad', 'w') as f:
             f.write(strParameter)
