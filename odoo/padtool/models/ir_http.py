@@ -2,6 +2,7 @@
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 import os
 import re
+import requests
 from os.path import join as opj
 try:
     import configparser as ConfigParser

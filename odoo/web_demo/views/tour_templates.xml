@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+        <template id="assets_backend" name="web_demo assets" inherit_id="web.assets_backend">
+            <xpath expr="." position="inside">
+            	<script type="text/javascript" src="/web_demo/static/src/js/tour.js"></script>
+                <link rel="stylesheet" href="/web_demo/static/src/less/tour_dashboard.less"/>
+            </xpath>
+        </template>
+</odoo>

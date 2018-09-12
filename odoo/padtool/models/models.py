@@ -353,11 +353,52 @@ class Pad(models.TransientModel):
             elif obj['padType'] == 'mainMark':
                 height = 0     
                 block_list = []
-                mainMarkWidth += obj['blocks'][0]['iInterSectionWidth']
+                iInterSectionWidth = 0
+                
                 for block in obj['blocks']:
-                    height += block['iInterSectionHeight']
-                    if not pad['isMainMarkModified']:
+                    if (not 'iInterSectionHeight' in block):
+                        continue;
+                    if (not 'isMainMarkModified' in pad) or (not pad['isMainMarkModified']) :
                         continue
+                    if iInterSectionWidth == 0:
+                        iInterSectionWidth = block['iInterSectionWidth']
+                    
+                    height += block['iInterSectionHeight']
+                    imgFile = root + '/'+ glassName+'/JpegFile/IP'+str(block['iIPIndex']+1)+'/'+'AoiL_IP'+str(block['iIPIndex'])+'_scan'+str(block['iScanIndex'])+'_block'+str(block['iBlockIndex'])+'.jpg'
+                    with Image.open(imgFile) as im:
+                        left = block['iInterSectionStartX']
+                        right = block['iInterSectionStartX'] + block['iInterSectionWidth']
+                        upper = im.height - (block['iInterSectionStartY'] + block['iInterSectionHeight'])
+                        lower = im.height - block['iInterSectionStartY']
+                        im = im.transpose(Image.FLIP_TOP_BOTTOM)
+                        region = im.crop((left ,upper, right, lower))
+                        block_list.append(region)
+                
+                mainMarkWidth += iInterSectionWidth       
+                strMainMark += 'MainMark'+str(len(mainMarkList))+'.size = '+ str(iInterSectionWidth) +','+str(height)+'\n'
+                strMainMark += 'MainMark'+str(len(mainMarkList))+'.startx = '+ str(mainMarkStartx) + '\n'
+                strMainMark += 'MainMark'+str(len(mainMarkList))+'.pos = '+str((obj['points'][0]['ux'] + obj['points'][1]['ux'])/2-pad['dPanelCenterX'])+','+str((obj['points'][0]['uy']+obj['points'][1]['uy'])/2-pad['dPanelCenterY'])+'\n'
+                strMainMark += 'MainMark'+str(len(mainMarkList))+'.ipindex = '+str(block['iIPIndex'])+'\n'
+                strMainMark += 'MainMark'+str(len(mainMarkList))+'.scanindex = '+str(block['iScanIndex'])+'\n'
+                
+                mainMarkStartx += iInterSectionWidth
+                mainMarkHeight = height if height > mainMarkHeight else mainMarkHeight   
+                if len(block_list):
+                    mainMarkList.append(block_list)
+            elif obj['padType'] == 'subMark':
+                height = 0     
+                block_list = []
+                iInterSectionWidth = 0
+                
+                for block in obj['blocks']:
+                    if (not 'iInterSectionHeight' in block):
+                        continue;
+                    if (not 'isSubMarkModified' in pad) or (not pad['isSubMarkModified']) :
+                        continue
+                    if iInterSectionWidth == 0:
+                        iInterSectionWidth = block['iInterSectionWidth']
+                    
+                    height += block['iInterSectionHeight']
                     imgFile = root + '/'+ glassName+'/JpegFile/IP'+str(block['iIPIndex']+1)+'/'+'AoiL_IP'+str(block['iIPIndex'])+'_scan'+str(block['iScanIndex'])+'_block'+str(block['iBlockIndex'])+'.jpg'
                     with Image.open(imgFile) as im:
                         left = block['iInterSectionStartX']
@@ -368,43 +409,16 @@ class Pad(models.TransientModel):
                         region = im.crop((left ,upper, right, lower))
                         block_list.append(region)
                         
-                strMainMark += 'MainMark'+str(len(mainMarkList))+'.size = '+ str(block['iInterSectionWidth']) +','+str(height)+'\n'
-                strMainMark += 'MainMark'+str(len(mainMarkList))+'.startx = '+ str(mainMarkStartx) + '\n'
-                strMainMark += 'MainMark'+str(len(mainMarkList))+'.pos = '+str((obj['points'][0]['ux'] + obj['points'][1]['ux'])/2-pad['dPanelCenterX'])+','+str((obj['points'][0]['uy']+obj['points'][1]['uy'])/2-pad['dPanelCenterY'])+'\n'
-                strMainMark += 'MainMark'+str(len(mainMarkList))+'.ipindex = '+str(block['iIPIndex'])+'\n'
-                strMainMark += 'MainMark'+str(len(mainMarkList))+'.scanindex = '+str(block['iScanIndex'])+'\n'
-                
-                mainMarkStartx += block['iInterSectionWidth']
-                mainMarkHeight = height if height > mainMarkHeight else mainMarkHeight   
-                if len(block_list):
-                    mainMarkList.append(block_list)
-            elif obj['padType'] == 'subMark':
-                height = 0     
-                block_list = []
-                subMarkWidth += obj['blocks'][0]['iInterSectionWidth']
-                for block in obj['blocks']:
-                    height += block['iInterSectionHeight']
-                    if not pad['isSubMarkModified']:
-                        continue
-                    
-                    imgFile = root + '/'+ glassName+'/JpegFile/IP'+str(block['iIPIndex']+1)+'/'+'AoiL_IP'+str(block['iIPIndex'])+'_scan'+str(block['iScanIndex'])+'_block'+str(block['iBlockIndex'])+'.jpg'
-                    with Image.open(imgFile) as im:
-                        left = block['iInterSectionStartX']
-                        right = block['iInterSectionStartX'] + block['iInterSectionWidth']
-                        upper = im.height - (block['iInterSectionStartY'] + block['iInterSectionHeight'])
-                        lower = im.height - block['iInterSectionStartY']
-                        im = im.transpose(Image.FLIP_TOP_BOTTOM)
-                        region = im.crop((left ,upper, right, lower))
-                        block_list.append(region)
-
-                strSubMark += 'SubMark'+str(len(subMarkList))+'.size = '+ str(block['iInterSectionWidth']) +','+str(height)+'\n'
+                subMarkWidth += iInterSectionWidth
+                strSubMark += 'SubMark'+str(len(subMarkList))+'.size = '+ str(iInterSectionWidth) +','+str(height)+'\n'
                 strSubMark += 'SubMark'+str(len(subMarkList))+'.startx = '+ str(subMarkStartx) + '\n'
                 strSubMark += 'SubMark'+str(len(subMarkList))+'.pos = '+str((obj['points'][0]['ux'] + obj['points'][1]['ux'])/2-pad['dPanelCenterX'])+','+str((obj['points'][0]['uy']+obj['points'][1]['uy'])/2-pad['dPanelCenterY'])+'\n'
                 strSubMark += 'SubMark'+str(len(subMarkList))+'.ipindex = '+str(block['iIPIndex'])+'\n'
                 strSubMark += 'SubMark'+str(len(subMarkList))+'.scanindex = '+str(block['iScanIndex'])+'\n'
                 strSubMark += 'SubMark'+str(len(subMarkList))+'.horizontal = '+str(obj['iMarkDirectionType'])+'\n'
                 
-                subMarkStartx += block['iInterSectionWidth']
+                
+                subMarkStartx += iInterSectionWidth
                 subMarkHeight = height if height > subMarkHeight else subMarkHeight   
                 if len(block_list):
                     subMarkList.append(block_list)

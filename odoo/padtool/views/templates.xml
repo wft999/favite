@@ -34,6 +34,7 @@
     
     <template id="layout2" name="layout2" inherit_id="web.login_layout">
         <xpath expr="//a[@href='https://www.odoo.com']" position="replace">
+        	<a href="/padtool/static/demo/story.html" target="_blank">Demo</a> |
             <a href="http://www.favite.com" target="_blank">Powered by <span>Favite</span></a>
         </xpath>
     </template>

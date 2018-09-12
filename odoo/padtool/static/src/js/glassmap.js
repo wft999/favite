@@ -6,7 +6,6 @@ var core = require('web.core');
 var Widget = require('web.Widget');
 var Coordinate = require('padtool.coordinate');
 var Mycanvas = require('padtool.Canvas');
-
 var QWeb = core.qweb;
 var _t = core._t;
 

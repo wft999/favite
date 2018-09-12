@@ -106,9 +106,7 @@ var Panelmap = Map.extend(ControlPanelMixin,{
     		var tmp = [];
     		
     		item.points.forEach(function(p){
-    			if(action == 'copy')
-    				tmp.push([]);
-    			else
+    			if(action !== 'copy')
     				tmp.push({x:p.x,y:p.y,ux:p.ux,uy:p.uy});
         	});
 
@@ -187,6 +185,8 @@ var Panelmap = Map.extend(ControlPanelMixin,{
     	
     	var hidden = this.pad.curType == 'frame' || this.pad.curType == 'subMark' 
     	this.$buttons.find('.fa-trash').toggleClass('o_hidden',hidden);
+    	this.$buttons.find('.fa-undo').toggleClass('o_hidden',hidden);
+    	this.$buttons.find('.fa-repeat').toggleClass('o_hidden',hidden);
 
     	hidden = this.pad.curType !== 'subMark'
     	this.$buttons.find('.fa-refresh').toggleClass('o_hidden',hidden);
@@ -330,20 +330,22 @@ var Panelmap = Map.extend(ControlPanelMixin,{
 		Dialog.confirm(this, (_t("Are you sure you want to remove these items?")), {
             confirm_callback: function () {
             	var objs = self.pad.selObjs;
+            	self.register(objs,'delete');
             	for(var i = 0; i< objs.length;i++){
             		objs[i].clear();
             		if(objs[i].padType == 'mainMark'){
             			self.pad.isMainMarkModified = true;
             		}
+            		objs[i].points = [];
+            		/*
             		var length = self.pad.objs.length;
             		for(var j =0 ; j<length; j++){
             			if(self.pad.objs[j] == objs[i]){
             				self.pad.objs.splice(j,1);
             				break;
             			}
-            		}
+            		}*/
             	}
-            	self.register(objs,'delete');
             	
             	self.pad.isModified = true;
             	if(self.pad.isModified && self.hawkeye.visible)

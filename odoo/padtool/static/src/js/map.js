@@ -81,7 +81,7 @@ var Map = Widget.extend({
     		$('body').on('keydown', self.keydownHandler);
 
     		self.defImage.resolve();
-    		
+    		/*
     		$.contextMenu({
     	        selector: '.canvas-map', 
     	        items: {
@@ -101,7 +101,7 @@ var Map = Widget.extend({
     	            }
     	        }, 
     	        
-    	    });
+    	    });*/
     		
     	});
     	
@@ -294,17 +294,15 @@ var Map = Widget.extend({
  		
     	 zoom = zoom + delta;
     	 zoom = Math.floor(zoom*10)/10;
-    	 if (zoom > 1.2) zoom = 1.2;
+    	 if (zoom > 1.0) zoom = 1.0;
     	 if (zoom <= this.minZoom) zoom = this.minZoom;
  		
     	 var div = this.$('div.canvas-map').length? this.$('div.canvas-map'): this.$el;
  		
     	 x = x1 * zoom - (x - div.scrollLeft());
     	 y = y1 * zoom - (y - div.scrollTop());
- 		
     	 this.map.setZoom(zoom);
     	 this.map.setDimensions({width:this.image.width*zoom,height:this.image.height*zoom});
- 		//this.image.scale(zoom);
 
     	 div.scrollTop(y);
     	 div.scrollLeft(x);
@@ -318,19 +316,18 @@ var Map = Widget.extend({
 	     			left: opt.pointer.x/zoom,
 	     			visible:true,
 	     		});
-	 	   this.hawkeye.setCoords();
-				
+	 	    this.hawkeye.setCoords();
 	     	this.hawkeye.bringToFront();
 			
 			
-			if(this.hawkmap){
-				this.hawkmap.destroy();
-	    		delete this.hawkmap;
+			if(!this.hawkmap){
+				//this.hawkmap.destroy();
+	    		//delete this.hawkmap;
+				this.hawkmap = new Hawkmap(this);
+		        this.hawkmap.pad = this.pad;
+		        this.hawkmap.appendTo('body');
 	    	}
-			
-	    	this.hawkmap = new Hawkmap(this);
-	        this.hawkmap.pad = this.pad;
-	        this.hawkmap.appendTo('body');
+			this.hawkmap.do_show();
 	        this.hawkmap.showImage();
 
 		}

@@ -107,6 +107,7 @@ Var Option_AllInOne
 Var HasPostgreSQL
 Var cmdLineParams
 
+Var TextGlassDataPath
 Var TextPostgreSQLHostname
 Var TextPostgreSQLPort
 Var TextPostgreSQLUsername
@@ -114,6 +115,8 @@ Var TextPostgreSQLPassword
 
 Var SelectPath
 
+var HWNDGlassDataBrowse
+Var HWNDGlassDataPath
 Var HWNDPostgreSQLHostname
 Var HWNDPostgreSQLPort
 Var HWNDPostgreSQLUsername
@@ -140,6 +143,7 @@ Var HWNDPostgreSQLPassword
 !define MUI_PAGE_CUSTOMFUNCTION_LEAVE ComponentLeave
 !insertmacro MUI_PAGE_COMPONENTS
 Page Custom ShowPostgreSQL LeavePostgreSQL
+Page Custom ShowGlassData LeaveGlassData
 !insertmacro MUI_PAGE_DIRECTORY
 !insertmacro MUI_PAGE_INSTFILES
 
@@ -167,10 +171,13 @@ LangString DESC_FinishPage_Link ${LANG_ENGLISH} "Contact Favite for Partnership 
 LangString DESC_AtLeastOneComponent ${LANG_ENGLISH} "You have to choose at least one component"
 LangString DESC_CanNotInstallPostgreSQL ${LANG_ENGLISH} "You can not install the PostgreSQL database without the FaviteTools Server"
 LangString WARNING_HostNameIsEmpty ${LANG_ENGLISH} "The hostname for the connection to the PostgreSQL Server is empty"
+LangString WARNING_GlassPathIsEmpty ${LANG_ENGLISH} "The path for glass data is empty"
 LangString WARNING_UserNameIsEmpty ${LANG_ENGLISH} "The username for the connection to the PostgreSQL Server is empty"
 LangString WARNING_PasswordIsEmpty ${LANG_ENGLISH} "The password for the connection to the PostgreSQL Server is empty"
 LangString WARNING_PortIsWrong ${LANG_ENGLISH} "The port for the connexion to the PostgreSQL Server is wrong (default: 5432)"
 LangString DESC_PostgreSQLPage ${LANG_ENGLISH} "Configure the information for the PostgreSQL connection"
+LangString DESC_GlassDataPage ${LANG_ENGLISH} "Configure the root path for the Glass data"
+LangString DESC_GlassData_Path ${LANG_ENGLISH} "Browse..."
 LangString DESC_PostgreSQL_Hostname ${LANG_ENGLISH} "Hostname"
 LangString DESC_PostgreSQL_Port ${LANG_ENGLISH} "Port"
 LangString DESC_PostgreSQL_Username ${LANG_ENGLISH} "Username"
@@ -196,10 +203,43 @@ Section $(TITLE_OpenERP_Server) SectionOpenERP_Server
     SetOutPath "$INSTDIR\nssm"
     File /r /x "src" "..\..\..\nssm\*"
 
-    SetOutPath "$INSTDIR\server"
+#    SetOutPath "$INSTDIR\server"
 #    File /r /x "${POSTGRESQL_EXE_FILENAME}"  "..\..\*"
-    File /r /x "${POSTGRESQL_EXE_FILENAME}" /x "wkhtmltopdf"  /x "odoo.log" /x "favite-tools-setup*.exe" "..\..\*"
-
+#    File /r /x "${POSTGRESQL_EXE_FILENAME}" /x "wkhtmltopdf"  /x "odoo.log" /x "setup" /x "doc"  /x "debian" /x "i18n" "..\..\*"
+	SetOutPath "$INSTDIR\server"
+	File   "..\..\odoo-bin"
+	File   "..\..\odoo.conf"
+	File   "..\..\favite.backup"
+	
+	SetOutPath "$INSTDIR\server"
+	File /r /x "addons"  "..\..\odoo"
+	
+	SetOutPath "$INSTDIR\server\odoo\addons"
+	File /r   "..\..\odoo\addons\auth_crypt"
+	SetOutPath "$INSTDIR\server\odoo\addons"
+	File /r   "..\..\odoo\addons\base"
+	SetOutPath "$INSTDIR\server\odoo\addons"
+	File /r   "..\..\odoo\addons\base_import"
+	SetOutPath "$INSTDIR\server\odoo\addons"
+	File /r   "..\..\odoo\addons\iap"
+	SetOutPath "$INSTDIR\server\odoo\addons"
+	File /r   "..\..\odoo\addons\web"
+	SetOutPath "$INSTDIR\server\odoo\addons"
+	File /r   "..\..\odoo\addons\web_diagram"
+	SetOutPath "$INSTDIR\server\odoo\addons"
+	File /r   "..\..\odoo\addons\web_editor"
+	SetOutPath "$INSTDIR\server\odoo\addons"
+	File /r   "..\..\odoo\addons\web_kanban_gauge"
+	SetOutPath "$INSTDIR\server\odoo\addons"
+	File /r   "..\..\odoo\addons\web_planner"
+	SetOutPath "$INSTDIR\server\odoo\addons"
+	File /r   "..\..\odoo\addons\web_settings_dashboard"
+	SetOutPath "$INSTDIR\server\odoo\addons"
+	File /r   "..\..\odoo\addons\web_tour"
+	
+	SetOutPath "$INSTDIR\server\odoo\addons"
+    File /r "E:\work\favite\odoo\padtool"
+	
     SetOutPath "$INSTDIR\vcredist"
     File /r "..\..\..\vcredist\*.exe"
     
@@ -215,8 +255,7 @@ Section $(TITLE_OpenERP_Server) SectionOpenERP_Server
     File /r "${STATIC_PATH}\wkhtmltopdf\*"
     File /r "${STATIC_PATH}\less\*"
     
-    SetOutPath "$INSTDIR\server\odoo\addons"
-    File /r "E:\work\favite\odoo\*"
+    
 
 # If there is a previous install of the OpenERP Server, keep the login/password from the config file
     WriteIniStr "$INSTDIR\server\odoo.conf" "options" "db_host" $TextPostgreSQLHostname
@@ -230,9 +269,7 @@ Section $(TITLE_OpenERP_Server) SectionOpenERP_Server
     CreateDirectory  "$INSTDIR\appdata"
     WriteIniStr "$INSTDIR\server\odoo.conf" "options" "data_dir" "$INSTDIR\appdata"
     
-    nsDialogs::SelectFolderDialog   "Select Glass Data Path" "D:\glassdata"
-	Pop $SelectPath
-	WriteIniStr "$INSTDIR\server\odoo.conf" "options" "glass_root_path" "$SelectPath"
+	WriteIniStr "$INSTDIR\server\odoo.conf" "options" "glass_root_path" "$TextGlassDataPath"
 	WriteIniStr "$INSTDIR\server\odoo.conf" "options" "list_db" "False"
 
     # if we're going to install postgresql force it's path,
@@ -286,6 +323,8 @@ Section $(TITLE_PostgreSQL) SectionPostgreSQL
 SectionEnd
 
 Section -Post
+	nsExec::ExecToLog '"$INSTDIR\PostgreSQL\bin\dropdb.exe" \
+		--host localhost --port 5432 --username "openpg" --no-password --if-exists favite'
 	nsExec::ExecToLog '"$INSTDIR\PostgreSQL\bin\createdb.exe" \
 		--host localhost --port 5432 --username "openpg" --no-password favite'
 	nsExec::ExecToLog '"$INSTDIR\PostgreSQL\bin\pg_restore.exe" \
@@ -384,6 +423,53 @@ Function .onSelChange
 FunctionEnd
 
 Function PostgreSQLOnBack
+FunctionEnd
+
+Function GlassDataOnBack
+FunctionEnd
+
+Function GlassDataBrowse
+	nsDialogs::SelectFolderDialog   "Select Glass Data Path" "D:\glassdata"
+	Pop $TextGlassDataPath
+	${NSD_SetText} $HWNDGlassDataPath $TextGlassDataPath
+	Pop $0
+FunctionEnd
+
+Function ShowGlassData
+
+    nsDialogs::Create /NOUNLOAD 1018
+    Pop $0
+
+    ${If} $0 == error
+        Abort
+    ${EndIf}
+
+    GetFunctionAddress $0 GlassDataOnBack
+    nsDialogs::OnBack $0
+
+    ${NSD_CreateLabel} 0 0 100% 10u $(DESC_GlassDataPage)
+    Pop $0
+
+    ${NSD_CreateText} 0 45 240u 12u $TextGlassDataPath
+    Pop $HWNDGlassDataPath
+    ${NSD_CreateButton} 370 45 50u 12u $(DESC_GlassData_Path)
+    Pop $HWNDGlassDataBrowse
+    
+    ${NSD_OnClick} $HWNDGlassDataBrowse GlassDataBrowse
+    Pop $0
+
+    nsDialogs::Show
+FunctionEnd
+
+Function LeaveGlassData
+    ${NSD_GetText} $HWNDGlassDataPath $TextGlassDataPath
+
+    StrLen $1 $TextGlassDataPath
+    ${If} $1 == 0
+        MessageBox MB_ICONEXCLAMATION|MB_OK $(WARNING_GlassPathIsEmpty)
+        Abort
+    ${EndIf}
+
 FunctionEnd
 
 Function ShowPostgreSQL

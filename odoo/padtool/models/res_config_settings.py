@@ -7,12 +7,12 @@ from odoo import api, fields, models
 class ResConfigSettings(models.TransientModel):
     _inherit = 'res.config.settings'
     
-    hawk_width = fields.Integer( string="Hwakeye window width",default=5000,help="Gives the sequence of this line when displaying the invoice.")
-    hawk_height = fields.Integer( string="Hwakeye window height",default=5000,help="Gives the sequence of this line when displaying the invoice.")
+    hawk_width = fields.Integer( string="Hwakeye window width",default=5000,help="")
+    hawk_height = fields.Integer( string="Hwakeye window height",default=5000,help="")
     
-    region_width = fields.Integer( string="Region width",default=50000,help="Gives the sequence of this line when displaying the invoice.")
-    region_height = fields.Integer( string="Region height",default=50000,help="Gives the sequence of this line when displaying the invoice.")
-    region_overlap = fields.Integer( string="Region overlap",default=5000,help="Gives the sequence of this line when displaying the invoice.")
+    region_width = fields.Integer( string="Region width",default=50000,help="")
+    region_height = fields.Integer( string="Region height",default=50000,help="")
+    region_overlap = fields.Integer( string="Region overlap",default=5000,help="")
 
 
     @api.model

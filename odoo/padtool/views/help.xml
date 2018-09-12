@@ -17,8 +17,5 @@
     <menuitem id="menu_help_step3" name="Step3" parent="padtool.menu_help"
             sequence="0" action="action_pad_config_settings"/>
 
-
-    
-    
   </data>
 </odoo>
