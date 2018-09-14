@@ -39,21 +39,24 @@ var Hawkmap = Widget.extend({
     		stopContextMenu:true,
     		imageSmoothingEnabled:false
     		});
+    	this.map.pads = new Array();
     	this.map.isPanel = false;
     	this.map.on('object:moving',_.debounce(this._onObjectMoving.bind(this), 100));
     	this.map.on('object:modified',this._onObjectModified.bind(this));
     	this.map.on('mouse:move',_.debounce(this._onMouseMove.bind(this), 100));    		
-		this.map.on('mouse:out', this._onMouseOut.bind(this));
+		
 		this.map.on('mouse:up', this._onMouseUp.bind(this));
 		this.map.on('mouse:down',this._onMouseDown.bind(this));
-		this.map.on('mouse:over',this._onMouseOver.bind(this));
+		
+		//this.map.on('mouse:over',this._onMouseOver.bind(this));
+		this.map.on('mouse:out', this._onMouseOut.bind(this));
 		
 		//this.map.on('selection:updated',this._onObjectSelect.bind(this));
 		//this.map.on('selection:created',this._onObjectSelect.bind(this));
-		this.map.on('selection:updated',this._onSelectionUpdated.bind(this));
-		this.map.on('selection:created',this._onSelectionUpdated.bind(this));
-		this.map.on('selection:cleared',this._onSelectionCleared.bind(this));
-		this.map.on('object:moved',this._onObjectMoved.bind(this));
+//		this.map.on('selection:updated',this._onSelectionUpdated.bind(this));
+//		this.map.on('selection:created',this._onSelectionUpdated.bind(this));
+//		this.map.on('selection:cleared',this._onSelectionCleared.bind(this));
+//		this.map.on('object:moved',this._onObjectMoved.bind(this));
 		
 		var hidden = this.pad.curType == 'frame' || this.pad.curType == 'subMark';
     	this.$el.find('.fa-edit').toggleClass('o_hidden',hidden);
@@ -144,18 +147,21 @@ var Hawkmap = Widget.extend({
     drawPad:function(){
     	var self = this;
     	self.map.clear();
+    	self.map.pads = new Array();
     	self.map.add(self.image.set({hasControls:false,lockMovementX:true,lockMovementY:true,selectable:false,}));
-    	
-    	this.parent.map.forEachObject(function(obj) {
-    		var isCurPad = self.curPad && self.curPad.panelpad && self.curPad.panelpad == obj.pad;
-    		
-    		if(obj.type != 'group')
+
+    	this.parent.map.pads.forEach(function(obj){
+    		var isCurPad = self.map.curPad && self.map.curPad.panelpad && self.map.curPad.panelpad == obj;
+    		var left = self.parent.hawkeye.left - self.parent.hawkeye.scaleX*self.parent.hawkeye.width/2;
+        	var right = self.parent.hawkeye.left + self.parent.hawkeye.scaleX*self.parent.hawkeye.width/2;
+        	var top = self.parent.hawkeye.top - self.parent.hawkeye.scaleY*self.parent.hawkeye.height/2;
+        	var bottom = self.parent.hawkeye.top + self.parent.hawkeye.scaleY*self.parent.hawkeye.height/2;
+        	if((!isCurPad) && (!obj.intersectsWithRect(left,right,top,bottom)))
     			return;
-    		if((!self.parent.hawkeye.intersectsWithObject(obj)) && (!isCurPad))
-    			return;
-    		
-    		var points = obj.pad.points;
-    		var pad = new Mycanvas.MyPolyline(self.map,obj.pad.padType);
+
+    		var points = obj.points;
+    		var pad = new Mycanvas.MyPolyline(self.map,obj.padType);
+    		pad.selected = obj.selected;
 
     		for(var i = 0; i < points.length; i++){
     			if(points[i].ux){
@@ -163,48 +169,45 @@ var Hawkmap = Widget.extend({
     				if(tmp.iOutputX == undefined){
     					var x = (points[i].x - self.eyeLeft)/self.parent.padConf[self.parent.panelName].panel_map_ratio_x;
         				var y= (points[i].y - self.eyeTop)/self.parent.padConf[self.parent.panelName].panel_map_ratio_y;
-        				pad.addPoint({x,y});
+        				pad.points.push({x,y});
     				}else{
     					var x = tmp.iOutputX;
     					var y = self.image.height - tmp.iOutputY;
 
-    					pad.addPoint({x,y});
+    					pad.points.push({x,y});
     				}
     				
     			}else{
-    				pad.addPoint({
+    				pad.points.push({
         				x: (points[i].x - self.eyeLeft)/self.parent.padConf[self.parent.panelName].panel_map_ratio_x,
         				y: (points[i].y - self.eyeTop)/self.parent.padConf[self.parent.panelName].panel_map_ratio_y,
         			});
     			}
     		}
-    		
-    		if(self.parent.pad.curType == 'frame' && pad.padType == 'frame')
-    			pad.updateCross(true);
-    		
-    		if(pad.polyline){
-    			pad.polyline.visible = pad.padType == self.parent.pad.curType || (pad.padType == 'region' && self.parent.pad.curType == 'frame');
-        		pad.polyline.lockMovementX = pad.padType == 'subMark' || pad.padType == 'frame' || pad.padType == 'region' || self.map.hoverCursor !== 'default';
-        		pad.polyline.lockMovementY = pad.padType == 'subMark' || pad.padType == 'frame' || pad.padType == 'region' || self.map.hoverCursor !== 'default';
-        		pad.polyline.hoverCursor = (pad.polyline.lockMovementX)?'':'move';
+    		pad.update();
+    		pad.panelpad = obj;
+    		obj.hawkpad = pad;
+    		if(self.map.curPad && self.map.curPad.panelpad && self.map.curPad.panelpad == obj){
+    			self.map.curPad = pad;
     		}
-
-    		pad.panelpad = obj.pad;
-    		obj.pad.hawkpad = pad;
-    		if(self.curPad && self.curPad.panelpad && self.curPad.panelpad == obj.pad)
-    			self.curPad = pad;
     		
-    		if(obj.pad.padType == 'inspectZone' && ((obj.pad.periodX != undefined && obj.pad.periodX != 0) || (obj.pad.periodY != undefined && obj.pad.periodY != 0))){
+    		var lineVisible = pad.padType == self.parent.pad.curType || (pad.padType == 'region' && self.parent.pad.curType == 'frame');
+    		var crossVisible = lineVisible && (pad.padType == 'frame' || self.map.curPad == pad);
+    		pad.lines.forEach(function(line){line.visible = lineVisible;});
+    		pad.crosses.forEach(function(cross){cross.visible = crossVisible;})
+
+    		
+    		if(obj.padType == 'inspectZone' && ((obj.periodX != undefined && obj.periodX != 0) || (obj.periodY != undefined && obj.periodY != 0))){
  				var angle,period;
-    			if(obj.pad.periodY == 0){
+    			if(obj.periodY == 0){
  					angle = fabric.util.degreesToRadians(90);
- 					period = obj.pad.periodX;
- 				}else if(obj.pad.periodX == 0){
+ 					period = obj.periodX;
+ 				}else if(obj.periodX == 0){
  					angle = fabric.util.degreesToRadians(0);
- 					period = obj.pad.periodY;
+ 					period = obj.periodY;
  				}else{
- 					angle = Math.atan(obj.pad.periodX/obj.pad.periodY);
- 					period = obj.pad.periodY / fabric.util.cos(angle);
+ 					angle = Math.atan(obj.periodX/obj.periodY);
+ 					period = obj.periodY / fabric.util.cos(angle);
  				}
     			period = period / self.parent.coordinate.mpMachinePara.aIPParaArray[0].aScanParaArray[0].dResolutionY;
  				
@@ -226,18 +229,17 @@ var Hawkmap = Widget.extend({
  	    		}); 
  	        	self.map.add(pad.goa);
  			}
+    		
+    	});
 
-		});
-		
 		self.map.forEachObject(function(obj){
     		if(obj.type == 'cross')
     			obj.bringToFront();
-    		else if(obj.pad && ( obj.pad.padType == 'frame' || obj.pad.padType == 'region')){
-    			obj.selectable = false;
-    		}
     	});
 		
-		self.map.renderAll();
+		this._updateForMode();
+		
+		//self.map.renderAll();
     },
     
     //--------------------------------------------------------------------------
@@ -461,7 +463,7 @@ var Hawkmap = Widget.extend({
 			if(this._checkFrame(ux2,uy2,opt.target.id,opt.target.pad.panelpad == this.parent.innerFrame)){
 				opt.target.pad.points[opt.target.id].x = opt.target.left;
 				opt.target.pad.points[opt.target.id].y = opt.target.top;
-				if(opt.target.pad.polyline){
+				if(opt.target.pad){
 		    		opt.target.pad.update();
 		    	}
 				
@@ -487,7 +489,7 @@ var Hawkmap = Widget.extend({
     		if(this.parent.tmpCoordinate.bmpBlockMapPara.m_BlockMap.length == 1){
     			opt.target.pad.points[opt.target.id].x = opt.target.left;
     			opt.target.pad.points[opt.target.id].y = opt.target.top;
-    			if(opt.target.pad.polyline){
+    			if(opt.target.pad){
     	    		opt.target.pad.update();
     	    	}
     			this.parent.register(opt.target.pad.panelpad);
@@ -523,7 +525,7 @@ var Hawkmap = Widget.extend({
 		}else{
 			opt.target.pad.points[opt.target.id].x = opt.target.left;
 			opt.target.pad.points[opt.target.id].y = opt.target.top;
-			if(opt.target.pad.polyline){
+			if(opt.target.pad){
 	    		opt.target.pad.update();
 	    	}
 			this.parent.register(opt.target.pad.panelpad);
@@ -545,14 +547,13 @@ var Hawkmap = Widget.extend({
     },
     
     _onMouseDown:function(opt){
-    	this.map._isMousedown = true;
     	this.map.startPointer = opt.pointer;
     },
 	_onMouseMove:function(opt){
 		if(this.image){
-			var zoom = this.map.getZoom();
 			var x = opt.e.offsetX;
 			var y = opt.e.offsetY;
+			var zoom = this.map.getZoom();
 			let {dOutputX:ux,dOutputY:uy} = this.parent.coordinate.HawkmapCoordinateToUMCoordinate(x/zoom,this.image.height-y/zoom);
 			$(".map-info").text("image(x:"+Math.round(x/zoom)+",y:"+Math.round(y/zoom)+") window(x:"+x+",y:"+y+") um(x:"+ux+',y:'+uy);
 		}
@@ -606,7 +607,7 @@ var Hawkmap = Widget.extend({
     },
     
     _onMouseUp:function(opt){
-    	var needUpdateHawk = false;
+
     	var zoom = this.map.getZoom();
     	var endPointer = _.clone(opt.pointer);
     	var _isDrawRect = this.map.startPointer.x != endPointer.x ||this.map.startPointer.y != endPointer.y;
@@ -616,22 +617,28 @@ var Hawkmap = Widget.extend({
     		this._zoom(delta,opt.e.offsetX,opt.e.offsetY);
     		opt.e.preventDefault();
      		opt.e.stopPropagation();
-    	}else if(!_isDrawRect && this.map.hoverCursor == 'copy' && this.pad.selObjs.length > 0){
-    		
+    	}else if(!_isDrawRect && this.map.hoverCursor == 'copy'){
+    		var self = this;
+    		var firstId = _.findIndex(this.parent.map.pads,function(pad){return pad.selected && pad.points.length  && pad.padType == self.pad.curType})
+    		if(firstId == -1)
+    			return;
+    			
     		let {dOutputX:ux,dOutputY:uy} = this.parent.coordinate.HawkmapCoordinateToUMCoordinate(endPointer.x/zoom,this.image.height-endPointer.y/zoom);
-    		var uoffsetX = ux - this.pad.selAnchor.pad.points[this.pad.selAnchor.id].ux;
-    		var uoffsetY = uy - this.pad.selAnchor.pad.points[this.pad.selAnchor.id].uy;
+    		var uoffsetX = ux - this.parent.map.pads[firstId].points[0].ux;
+    		var uoffsetY = uy - this.parent.map.pads[firstId].points[0].uy;
     		
     		var tmp = this.parent.coordinate.UMCoordinateToPanelMapCoordinate(ux,uy);
     		endPointer.x = tmp.dOutputX;
     		endPointer.y = this.parent.image.height-tmp.dOutputY;
-    		var offsetX = endPointer.x - this.pad.selAnchor.left;
-    		var offsetY = endPointer.y - this.pad.selAnchor.top;
-    		
-    		var self = this;
+    		var offsetX = endPointer.x - this.parent.map.pads[firstId].points[0].x;
+    		var offsetY = endPointer.y - this.parent.map.pads[firstId].points[0].y;
+
     		var pads = [];
-    		this.pad.selObjs.forEach(function(obj){
-    			var pad = new Mycanvas.MyPolyline(self.parent.map,obj.padType,false);
+    		this.parent.map.pads.forEach(function(obj){
+    			if((!obj.selected) || (obj.padType !== self.pad.curType))
+    				return;
+    			
+    			var pad = new Mycanvas.MyPolyline(self.parent.map,obj.padType);
     			if(obj.padType == 'mainMark'){
     				var left = Math.min(obj.points[0].ux,obj.points[1].ux) + uoffsetX;
     				var right = Math.max(obj.points[0].ux,obj.points[1].ux) + uoffsetX;
@@ -668,26 +675,24 @@ var Hawkmap = Widget.extend({
 	    			});
 	    		}
 	    		pad.update();
+	    		pads.push(pad);
 				
 				if(obj.padType == 'inspectZone'){
 					pad.periodX = obj.periodX || 0;
 					pad.periodY = obj.periodY || 0;
 					pad.D1G1 = obj.D1G1 || 0;
 	    		}
-				
-				self.pad.objs.push(pad);
-				pads.push(pad)
     		});
     		this.parent.register(pads,'copy');
-			needUpdateHawk = true;
     		this.pad.isModified = true;
+    		this.drawPad();
     	}else if(_isDrawRect && this.map.hoverCursor == 'crosshair'){
-    		var imgx = Math.min(this.map.startPointer.x,opt.pointer.x);
-			var imgy = Math.max(this.map.startPointer.y,opt.pointer.y);
-			let {dOutputX:ux,dOutputY:uy} = this.parent.coordinate.HawkmapCoordinateToUMCoordinate(imgx/zoom,this.image.height-imgy/zoom);
-			imgx = Math.max(this.map.startPointer.x,opt.pointer.x);
-			imgy = Math.min(this.map.startPointer.y,opt.pointer.y);
-			let {dOutputX:ux2,dOutputY:uy2} = this.parent.coordinate.HawkmapCoordinateToUMCoordinate(imgx/zoom,this.image.height-imgy/zoom);
+    		var imgx1 = Math.min(this.map.startPointer.x,opt.pointer.x);
+			var imgy1 = Math.max(this.map.startPointer.y,opt.pointer.y);
+			let {dOutputX:ux,dOutputY:uy} = this.parent.coordinate.HawkmapCoordinateToUMCoordinate(imgx1/zoom,this.image.height-imgy1/zoom);
+			var imgx2 = Math.max(this.map.startPointer.x,opt.pointer.x);
+			var imgy2 = Math.min(this.map.startPointer.y,opt.pointer.y);
+			let {dOutputX:ux2,dOutputY:uy2} = this.parent.coordinate.HawkmapCoordinateToUMCoordinate(imgx2/zoom,this.image.height-imgy2/zoom);
 			
 			var acrossIp = false;
 			if(this.pad.curType == "mainMark"){
@@ -697,17 +702,18 @@ var Hawkmap = Widget.extend({
 				
 			if(this.pad.curType != "mainMark" || acrossIp == false){
 				this.parent.map.discardActiveObject();
-				var rect = new Mycanvas.MyPolyline(this.parent.map,this.pad.curType,false);
-				this.parent.register(rect);
+				var pad = new Mycanvas.MyPolyline(this.parent.map,this.pad.curType);
+				this.parent.register(pad);
 				
 				var tmp = this.parent.coordinate.UMCoordinateToPanelMapCoordinate(ux,uy);
-	    		rect.addPoint({x:tmp.dOutputX, y:this.parent.image.height-tmp.dOutputY,ux,uy});
+				pad.points.push({x:tmp.dOutputX, y:this.parent.image.height-tmp.dOutputY,ux,uy});
 
 	    		tmp = this.parent.coordinate.UMCoordinateToPanelMapCoordinate(ux2,uy2);
-				rect.addPoint({x:tmp.dOutputX, y:this.parent.image.height-tmp.dOutputY,ux:ux2,uy:uy2});
+	    		pad.points.push({x:tmp.dOutputX, y:this.parent.image.height-tmp.dOutputY,ux:ux2,uy:uy2});
+	    		pad.update();
 				
-				if(rect.padType == "mainMark"){
-					rect.blocks = _.map(this.parent.tmpCoordinate.bmpBlockMapPara.m_BlockMap[0],function(item){
+				if(pad.padType == "mainMark"){
+					pad.blocks = _.map(this.parent.tmpCoordinate.bmpBlockMapPara.m_BlockMap[0],function(item){
 	    	    		return {
 	    	    			iIPIndex:item.iIPIndex,
 	    	    			iScanIndex:item.iScanIndex,
@@ -722,47 +728,82 @@ var Hawkmap = Widget.extend({
 					
 					this.pad.isMainMarkModified = true;
 				}
-	    		
-	    		needUpdateHawk = true;
-	    		//this.curPad = rect;
-	    		this.pad.objs.push(rect);
+				this.map.curPad = new Mycanvas.MyPolyline(this.map,this.pad.curType);
+				this.map.curPad.points.push({x: imgx1/zoom, y: imgy1/zoom});
+				this.map.curPad.points.push({x: imgx2/zoom, y: imgy2/zoom});
+				this.map.curPad.update();
+
+				this.map.curPad.panelpad = pad;
+				pad.hawkpad = this.map.curPad;
+				
+	    		//this.pad.objs.push(pad);
 	    		this.pad.isModified = true;
 			}else{
 				this.parent.notification_manager.notify(_t('Incorrect Operation'),_t('Mark is across multiple IPs!'),false);
 			}
     	}else if(!_isDrawRect && this.map.hoverCursor == 'crosshair' && (this.pad.curType=='inspectZone' || this.pad.curType=='uninspectZone')){
-    		if(!this.curPad){
-    			var pad = new Mycanvas.MyPolyline(this.parent.map,this.pad.curType,false);
-				this.curPad = new Mycanvas.MyPolyline(this.map,this.pad.curType,true);
-				this.curPad.panelpad = pad;
-				pad.hawkpad = this.curPad;
-				this.pad.objs.push(pad);
+    		if(!this.map.curPad){
+    			var pad = new Mycanvas.MyPolyline(this.parent.map,this.pad.curType);
+				this.map.curPad = new Mycanvas.MyPolyline(this.map,this.pad.curType);
+				this.map.curPad.panelpad = pad;
+				pad.hawkpad = this.map.curPad;
+				//this.pad.objs.push(pad);
 			}
-    		this.parent.register(this.curPad.panelpad);
+    		this.parent.register(this.map.curPad.panelpad);
     		
 			let {dOutputX:ux,dOutputY:uy} = this.parent.coordinate.HawkmapCoordinateToUMCoordinate(endPointer.x/zoom,this.image.height-endPointer.y/zoom);
     		tmp = this.parent.coordinate.UMCoordinateToPanelMapCoordinate(ux,uy);
 
-    		if(this.curPad.panelpad.addPoint({x:tmp.dOutputX, y:this.parent.image.height-tmp.dOutputY,ux,uy})){
-    			this.curPad.addPoint({x: endPointer.x/zoom, y: endPointer.y/zoom})
+    		if(this.map.curPad.panelpad.addPoint({x:tmp.dOutputX, y:this.parent.image.height-tmp.dOutputY,ux,uy})){
+    			this.map.curPad.addPoint({x: endPointer.x/zoom, y: endPointer.y/zoom})
     			this.pad.isModified = true;
     		}else{
     			this.parent.notification_manager.notify(_t('Incorrect Operation'),_t('Please enter valid point!'),false);
     		}
     			
-		}else if( _isDrawRect && this.map.hoverCursor == 'default'){
-			/*var objs = this.map.getActiveObjects();
-			if(objs.length){
-				this.map.discardActiveObject();
-				this.map.setActiveObject(objs[0]);
-			}*/
+		}else if(this.map.hoverCursor == 'default'){
+			var x = opt.pointer.x/zoom;
+			var y = opt.pointer.y/zoom;
+			if(this.map.curPad){
+				this.map.curPad = null;
+				if(this.markShow){
+					this.map.remove(this.markShow);
+					this.markShow = null;
+				}
+			}
+			
+			for(var i = 0; i < this.map.pads.length; i++){
+				if(this.map.pads[i].padType != this.pad.curType)
+					continue;
+				if(_isDrawRect){
+					var left = Math.min(this.map.startPointer.x,opt.pointer.x)/zoom;
+					var bottom = Math.max(this.map.startPointer.y,opt.pointer.y)/zoom;
+					var right = Math.max(this.map.startPointer.x,opt.pointer.x)/zoom;
+					var top = Math.min(this.map.startPointer.y,opt.pointer.y)/zoom;
+					this.map.pads[i].selected = this.map.pads[i].withinRect(left,right,top,bottom);
+					this.map.pads[i].panelpad.selected = this.map.pads[i].selected;
+				}else{
+					this.map.pads[i].selected = false;
+					this.map.pads[i].panelpad.selected = false;
+					if(this.map.pads[i].containsPoint({x,y})){
+						this.map.curPad = this.map.pads[i];
+						this._checkMark(this.map.curPad);
+						break;
+					}
+				}
+			}
+			this.map.discardActiveObject();
+			this.parent.updateForSelect();
+			
+			var hidden = this.pad.curType != 'inspectZone' || this.map.curPad == null;
+	    	this.$el.find('.fa-align-justify').toggleClass('o_hidden',hidden);
+	    	var self = this;
+	    	var hidden = _.some(this.parent.map.pads,function(pad){return pad.selected && pad.points.length  && pad.padType == self.pad.curType});
+	    	this.$el.find('.fa-copy').toggleClass('o_hidden',!hidden);
 		}
 
-    	if(needUpdateHawk){
-    		this.drawPad();
-    	}
-    			
-    	this.map._isMousedown = false;
+    	this._updateForMode();
+    	this.map.renderAll();
     },
     
     _on_headMousedown: function(event){
@@ -813,27 +854,31 @@ var Hawkmap = Widget.extend({
     	this.do_hide();
     },
     
-    _onButtonSelectMode:function(e){
-    	var self = this;  	
-   		this.map.hoverCursor = e.currentTarget.dataset.mode;    			
-    	$('.panel-heading button').removeClass('active');
-    	$(e.currentTarget).addClass('active');
-    	
+    _updateForMode:function(){
+    	var self = this; 
     	this.map.forEachObject(function(obj){
 			if(obj.pad && obj.pad.padType == self.pad.curType){
-				obj.lockMovementX = self.map.hoverCursor != 'default';
-				obj.lockMovementY = self.map.hoverCursor != 'default';
-				obj.hoverCursor = self.map.hoverCursor == 'default'?'move':'';
-				obj.hasControls = obj.type == 'goa' && self.map.hoverCursor == 'default';		
 				if(obj.type === 'cross'){
-					obj.visible = self.map.hoverCursor == 'default' && obj.pad.padType === 'frame';
+					obj.lockMovementX = self.map.hoverCursor != 'default';
+					obj.lockMovementY = self.map.hoverCursor != 'default';
+					obj.hoverCursor = self.map.hoverCursor == 'default'?'move':'';
+					obj.visible = (self.map.hoverCursor == 'default' && (obj.pad == self.map.curPad || obj.pad.padType == 'frame'))||
+					(self.map.hoverCursor == 'crosshair' && obj.pad == self.map.curPad);
+				}else if(obj.type === 'line'){
+					if(obj.pad.selected){
+						obj.pad.lines.forEach(function(line){line.dirty=true;line.stroke = 'red';line.fill='red'})
+					}else{
+						obj.pad.lines.forEach(function(line){line.dirty=true;line.stroke = 'yellow';line.fill='yellow'})
+					}
+				}else if(obj.type === 'goa'){
+					obj.hasControls = self.map.hoverCursor == 'default';	
 				}
 			}
 		});
     	
     	if(this.map.hoverCursor == 'default'){
-    		this.map.discardActiveObject();
-    		this.curPad = null;
+    		//this.map.discardActiveObject();
+    		//this.curPad = null;
     	}else if(this.map.hoverCursor == 'crosshair'){
 			for(var i = 0; i< this.pad.selObjs.length;i++){
 	    		this.pad.selObjs[i].updateCross(false);
@@ -847,8 +892,19 @@ var Hawkmap = Widget.extend({
     	}else{
     		this.map.discardActiveObject();
     	}
+    	
+    	var hidden = _.some(this.parent.map.pads,function(pad){return pad.selected && pad.points.length  && pad.padType == self.pad.curType});
+    	this.$el.find('.fa-copy').toggleClass('o_hidden',!hidden);
     		
     	this.map.requestRenderAll();
+    },
+    
+    _onButtonSelectMode:function(e){
+   		this.map.hoverCursor = e.currentTarget.dataset.mode;    			
+    	$('.panel-heading button').removeClass('active');
+    	$(e.currentTarget).addClass('active');
+    	
+    	this._updateForMode();
     },
     
     _onButtonCut:function(){
@@ -959,16 +1015,16 @@ var Hawkmap = Widget.extend({
     	}
     	
     },
-    _showMark:function(markImage,opt){
+    _showMark:function(markImage,pad){
 		var self = this;
 		var tempCanvas = new fabric.StaticCanvas();
 	    tempCanvas.setDimensions({
-	      width: opt.target.pad.panelpad.blocks[0].iInterSectionWidth+6,
-	      height:_.reduce(opt.target.pad.panelpad.blocks, function(memo, block){return (memo + (block.iInterSectionHeight?block.iInterSectionHeight:0));}, 0)+6
+	      width: pad.panelpad.blocks[0].iInterSectionWidth+6,
+	      height:_.reduce(pad.panelpad.blocks, function(memo, block){return (memo + (block.iInterSectionHeight?block.iInterSectionHeight:0));}, 0)+6
 	    });
 	    
 	    tempCanvas.add(markImage);
-	    markImage.left = -opt.target.pad.panelpad.imgStartX +2;
+	    markImage.left = -pad.panelpad.imgStartX +2;
 	    markImage.top = -markImage.height + tempCanvas.height + 2;
 	    markImage.setCoords();
 	    
@@ -990,57 +1046,54 @@ var Hawkmap = Widget.extend({
 	    		self.map.remove(self.markShow);
 			}
 	    	self.markShow = new fabric.Image(img, {
-	    		left: opt.target.left > (self.image.width/2)? (opt.target.left - tempCanvas.width - 10):(opt.target.left + opt.target.width + 10),
-	    		top: opt.target.top > (self.image.height/2)? (opt.target.top - tempCanvas.height - 10):(opt.target.top + opt.target.height + 10),
+	    		left: pad.points[0].x > (self.image.width/2)? (pad.points[0].x - tempCanvas.width - 10):(pad.points[1].x + 10),
+	    		top: pad.points[1].y > (self.image.height/2)? (pad.points[1].y - tempCanvas.height - 10):(pad.points[0].y + 10),
 	    		hasControls: false,
 	    	});
+	    	self.markShow.pad = pad;
 	    	self.map.add(self.markShow);
 	    	self.map.renderAll();
 	    }
 	    img.src = tempCanvas.toDataURL();
 	},
 	
-	_onMouseOver:function(opt){
+	_checkMark:function(pad){
 		var self = this;
-		if(opt.target && opt.target.pad ){
-			var d = new Date();
-			if(opt.target.pad.padType == 'mainMark'){
-				if(this.pad.isMainMarkModified){
-					//this.parent.notification_manager.notify(_t('Mark has been modified'),_t('Please save first!'),false);
-				}else{
-					if(this.parent.mainMarkImage){
-						this._showMark(this.parent.mainMarkImage,opt)
-					}else{
-						var src = '/glassdata/'+ self.parent.glassName +'/'+ self.parent.panelName +'/mainMark.bmp'+'?t='+ d.getTime();
-						fabric.Image.fromURL(src, function(img) {
-							self.parent.mainMarkImage = img;
-							self.parent.mainMarkImage.originX = 'left';
-							self.parent.mainMarkImage.originY = 'top';
-							self._showMark(self.parent.mainMarkImage,opt)
-						});
-					}
-				}
-			}else if(opt.target.pad.padType == 'subMark'){
-				if(this.pad.isSubMarkModified){
-					this.parent.notification_manager.notify(_t('Mark has been modified'),_t('Please save first!'),false);
-				}else{
-					if(this.subMarkImage){
-						this._showMark(this.parent.subMarkImage,opt)
-					}else{
-						var src = '/glassdata/'+ self.parent.glassName +'/'+ self.parent.panelName +'/subMark.bmp'+'?t='+ d.getTime();
-						fabric.Image.fromURL(src, function(img) {
-							self.parent.subMarkImage = img;
-							self.parent.subMarkImage.originX = 'left';
-							self.parent.subMarkImage.originY = 'top';
-							self._showMark(self.parent.subMarkImage,opt)
-						});
-					}
-				}
+		var d = new Date();
+		if(pad.padType == 'mainMark'){
+			if(this.pad.isMainMarkModified){
+				//this.parent.notification_manager.notify(_t('Mark has been modified'),_t('Please save first!'),false);
 			}else{
-				return;
+				if(this.parent.mainMarkImage){
+					this._showMark(this.parent.mainMarkImage,pad)
+				}else{
+					var src = '/glassdata/'+ self.parent.glassName +'/'+ self.parent.panelName +'/mainMark.bmp'+'?t='+ d.getTime();
+					fabric.Image.fromURL(src, function(img) {
+						self.parent.mainMarkImage = img;
+						self.parent.mainMarkImage.originX = 'left';
+						self.parent.mainMarkImage.originY = 'top';
+						self._showMark(self.parent.mainMarkImage,pad)
+					});
+				}
 			}
-			
-			
+		}else if(pad.padType == 'subMark'){
+			if(this.pad.isSubMarkModified){
+				this.parent.notification_manager.notify(_t('Mark has been modified'),_t('Please save first!'),false);
+			}else{
+				if(this.subMarkImage){
+					this._showMark(this.parent.subMarkImage,pad)
+				}else{
+					var src = '/glassdata/'+ self.parent.glassName +'/'+ self.parent.panelName +'/subMark.bmp'+'?t='+ d.getTime();
+					fabric.Image.fromURL(src, function(img) {
+						self.parent.subMarkImage = img;
+						self.parent.subMarkImage.originX = 'left';
+						self.parent.subMarkImage.originY = 'top';
+						self._showMark(self.parent.subMarkImage,pad)
+					});
+				}
+			}
+		}else{
+			return;
 		}
 	},
     

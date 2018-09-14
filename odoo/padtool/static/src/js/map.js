@@ -47,6 +47,7 @@ var Map = Widget.extend({
     			stopContextMenu:false,
     			imageSmoothingEnabled:false,
     		});
+    		self.map.pads = new Array();
     		self.map.isPanel = true;
     		var zoom = Math.max(self.map.getWidth()/img.width,self.map.getHeight()/img.height);
     		zoom = Math.floor(zoom*10)/10;
@@ -70,9 +71,9 @@ var Map = Widget.extend({
     		//self.map.on('object:scaling',self._onObjectScaling.bind(self));
     		//self.map.on('object:rotating',self._onObjectScaling.bind(self));
     		
-    		self.map.on('selection:updated',self._onSelectionUpdated.bind(self));
-    		self.map.on('selection:created',self._onSelectionUpdated.bind(self));
-    		self.map.on('selection:cleared',self._onSelectionCleared.bind(self));
+    		//self.map.on('selection:updated',self._onSelectionUpdated.bind(self));
+    		//self.map.on('selection:created',self._onSelectionUpdated.bind(self));
+    		//self.map.on('selection:cleared',self._onSelectionCleared.bind(self));
     		
     		self.keyupHandler = self._onKeyup.bind(self);
     		$('body').on('keyup', self.keyupHandler);
@@ -202,7 +203,7 @@ var Map = Widget.extend({
     			
     	}
     	
-    	this.hawkmap && this.hawkmap.$el.find('.fa-copy').toggleClass('o_hidden',this.pad.selObjs.length == 0);
+    	//this.hawkmap && this.hawkmap.$el.find('.fa-copy').toggleClass('o_hidden',this.pad.selObjs.length == 0);
     },
 
     _onSelectionCleared: function(opt){
@@ -212,7 +213,7 @@ var Map = Widget.extend({
     	
     	this.pad.selObjs = [];
     	this.pad.selAnchor = null;
-    	this.hawkmap && this.hawkmap.$el.find('.fa-copy').toggleClass('o_hidden',this.pad.selObjs.length == 0);
+    	//this.hawkmap && this.hawkmap.$el.find('.fa-copy').toggleClass('o_hidden',this.pad.selObjs.length == 0);
     },
     
     _animate: function () {
@@ -355,11 +356,10 @@ var Map = Widget.extend({
  		this.innerFrame = null;
  		this.outerFrame = null;
  		this.jsonpad.objs && this.jsonpad.objs.forEach(function(pad){
- 			var showCross = pad.padType == 'frame';
- 			var obj = new Mycanvas.MyPolyline(self.map,pad.padType,showCross);
+ 			var obj = new Mycanvas.MyPolyline(self.map,pad.padType);
  			obj = _.extend(obj, pad);
  			obj.update();
- 			self.pad.objs.push(obj);
+ 			//self.pad.objs.push(obj);
  			
  			if(pad.padType == 'frame'){
  		 		if(self.innerFrame == null)
@@ -370,19 +370,21 @@ var Map = Widget.extend({
  		})
  		
  		if(this.innerFrame == null || this.outerFrame == null){
- 			this.innerFrame = new Mycanvas.MyPolyline(this.map,'frame',true);
+ 			this.innerFrame = new Mycanvas.MyPolyline(this.map,'frame');
  			let {dOutputX:ux,dOutputY:uy} = this.coordinate.PanelMapCoordinateToUMCoordinate(500,500);
- 			this.innerFrame.addPoint({x:500,y:this.image.height-500,ux,uy});
+ 			this.innerFrame.points.push({x:500,y:this.image.height-500,ux,uy});
  			let {dOutputX:ux2,dOutputY:uy2} = this.coordinate.PanelMapCoordinateToUMCoordinate(this.image.width-500,this.image.height-500);
- 			this.innerFrame.addPoint({x:this.image.width-500,y:500,ux:ux2,uy:uy2});
- 			this.pad.objs.push(this.innerFrame);
+ 			this.innerFrame.points.push({x:this.image.width-500,y:500,ux:ux2,uy:uy2});
+ 			this.innerFrame.update();
+ 			//this.pad.objs.push(this.innerFrame);
 
- 			this.outerFrame = new Mycanvas.MyPolyline(this.map,this.pad.curType,true);
+ 			this.outerFrame = new Mycanvas.MyPolyline(this.map,this.pad.curType);
 			let {dOutputX:ux3,dOutputY:uy3} = this.coordinate.PanelMapCoordinateToUMCoordinate(300,300);
-			this.outerFrame.addPoint({x:300,y:this.image.height-300,ux:ux3,uy:uy3});
+			this.outerFrame.points.push({x:300,y:this.image.height-300,ux:ux3,uy:uy3});
 			let {dOutputX:ux4,dOutputY:uy4} = this.coordinate.PanelMapCoordinateToUMCoordinate(this.image.width-300,this.image.height-300);
-			this.outerFrame.addPoint({x:this.image.width-300,y:300,ux:ux4,uy:uy4});
-			this.pad.objs.push(this.outerFrame);
+			this.outerFrame.points.push({x:this.image.width-300,y:300,ux:ux4,uy:uy4});
+			this.outerFrame.update();
+			//this.pad.objs.push(this.outerFrame);
 
 			this._drawRegion();
 		}
@@ -391,9 +393,7 @@ var Map = Widget.extend({
  		this.innerFrame.crosses[1].bringToFront();
  		this.outerFrame.crosses[0].bringToFront();
  		this.outerFrame.crosses[1].bringToFront();
- 		this.innerFrame.polyline.selectable=false;
- 		this.outerFrame.polyline.selectable=false;
- 		
+
     	this.map.forEachObject(this.showObj.bind(this));
 
 		this.map.discardActiveObject();
@@ -406,10 +406,10 @@ var Map = Widget.extend({
  		var innerFrame = this.innerFrame;
  		var outerFrame = this.outerFrame;
  		
- 		var res = _.partition(this.pad.objs, function(obj){
+ 		var res = _.partition(this.map.pads, function(obj){
  			return obj.padType == 'region';
  		});
- 		this.pad.objs = res[1];
+ 		this.map.pads = res[1];
  		res[0].forEach(function(obj){
  			obj.clear();
  		})
@@ -427,28 +427,28 @@ var Map = Widget.extend({
  			ux = outerFrame.points[0].ux;
  			uy = bottom;
  			let {dOutputX:x1, dOutputY:y1} = this.coordinate.UMCoordinateToPanelMapCoordinate(ux,uy);
- 			obj.addPoint({x:x1,y:this.image.height-y1,ux,uy});
+ 			obj.points.push({x:x1,y:this.image.height-y1,ux,uy});
  			
  			ux = innerFrame.points[0].ux;
  			uy = top;
  			let {dOutputX:x2, dOutputY:y2} = this.coordinate.UMCoordinateToPanelMapCoordinate(ux,uy);
- 			obj.addPoint({x:x2,y:this.image.height-y2,ux,uy});
- 			this.pad.objs.push(obj);
- 			obj.polyline.selectable=false;
+ 			obj.points.push({x:x2,y:this.image.height-y2,ux,uy});
+ 			//this.pad.objs.push(obj);
+ 			obj.update();
  			
  			obj = new Mycanvas.MyPolyline(this.map,"region");
  			obj.iFrameNo = 2;
  			ux = innerFrame.points[1].ux;
  			uy = bottom;
  			let {dOutputX:x3, dOutputY:y3} = this.coordinate.UMCoordinateToPanelMapCoordinate(ux,uy);
- 			obj.addPoint({x:x3,y:this.image.height-y3,ux,uy});
+ 			obj.points.push({x:x3,y:this.image.height-y3,ux,uy});
  			
  			ux = outerFrame.points[1].ux;
  			uy = top;
  			let {dOutputX:x4, dOutputY:y4} = this.coordinate.UMCoordinateToPanelMapCoordinate(ux,uy);
- 			obj.addPoint({x:x4,y:this.image.height-y4,ux,uy});
- 			this.pad.objs.push(obj);
- 			obj.polyline.selectable=false;
+ 			obj.points.push({x:x4,y:this.image.height-y4,ux,uy});
+ 			//this.pad.objs.push(obj);
+ 			obj.update();
  			
  			top = nextTop;
  			if((top - this.globalConf.region_height) < innerFrame.points[0].uy  - this.globalConf.region_overlap)
@@ -461,15 +461,15 @@ var Map = Widget.extend({
  		ux = outerFrame.points[0].ux;
 		y = outerFrame.points[0].y;
 		uy = outerFrame.points[0].uy;
-		obj.addPoint({x,y,ux,uy});
+		obj.points.push({x,y,ux,uy});
 		
 		x = outerFrame.points[1].x;
 		ux = outerFrame.points[1].ux;
 		y = innerFrame.points[0].y;
 		uy = innerFrame.points[0].uy;
-		obj.addPoint({x,y,ux,uy});
-		this.pad.objs.push(obj);
-		obj.polyline.selectable=false;
+		obj.points.push({x,y,ux,uy});
+		//this.pad.objs.push(obj);
+		obj.update();
  		 
  		obj = new Mycanvas.MyPolyline(this.map,"region");
  		obj.iFrameNo = 3;
@@ -477,15 +477,15 @@ var Map = Widget.extend({
  		ux = outerFrame.points[0].ux;
 		y = innerFrame.points[1].y;
 		uy = innerFrame.points[1].uy;
-		obj.addPoint({x,y,ux,uy});
+		obj.points.push({x,y,ux,uy});
 		
 		x = outerFrame.points[1].x;
 		ux = outerFrame.points[1].ux;
 		y = outerFrame.points[1].y;
 		uy = outerFrame.points[1].uy;
-		obj.addPoint({x,y,ux,uy});
-		this.pad.objs.push(obj);
-		obj.polyline.selectable=false;
+		obj.points.push({x,y,ux,uy});
+		//this.pad.objs.push(obj);
+		obj.update();
  		 
 		
  	 },
@@ -545,10 +545,10 @@ var Map = Widget.extend({
  	 },
  	 
  	_drawSubMark:function(){
- 		var res = _.partition(this.pad.objs, function(obj){
+ 		var res = _.partition(this.map.pads, function(obj){
  			return obj.padType == 'subMark';
  		});
- 		this.pad.objs = res[1];
+ 		this.map.pads = res[1];
  		res[0].forEach(function(obj){
  			obj.clear();
  		});
@@ -563,7 +563,7 @@ var Map = Widget.extend({
  			var ux = this.pMarkRegionArray[i].dPositionX- width/2;
 			var uy = this.pMarkRegionArray[i].dPositionY+ height/2;
  			var tmp = this.coordinate.UMCoordinateToPanelMapCoordinate(ux,uy);
-    		rect.addPoint({
+    		rect.points.push({
     			x:tmp.dOutputX, 
     			y:this.image.height - tmp.dOutputY,
     			ux,
@@ -573,12 +573,13 @@ var Map = Widget.extend({
     		ux = this.pMarkRegionArray[i].dPositionX+ width/2;
 			uy = this.pMarkRegionArray[i].dPositionY- height/2;
     		tmp = this.coordinate.UMCoordinateToPanelMapCoordinate(ux,uy);
-			rect.addPoint({
+			rect.points.push({
 				x:tmp.dOutputX, 
 				y:this.image.height - tmp.dOutputY,
 				ux,
 				uy
 			});
+			rect.update();
 			
 			rect.iMarkDirectionType = this.pMarkRegionArray[i].iMarkDirectionType;
 
@@ -601,11 +602,33 @@ var Map = Widget.extend({
 	    			};
 	    		});
  			
- 			this.pad.objs.push(rect);
+ 			//this.pad.objs.push(rect);
  		}
  		
  		this.pad.isSubMarkModified = true;
  	},
+ 	
+ 	updateForSelect:function(){
+    	var self = this; 
+    	var first = true;
+    	this.map.pads.forEach(function(pad){
+			if(pad.padType == self.pad.curType && pad.points.length){
+				if(pad.selected){
+					pad.lines.forEach(function(line){line.dirty=true;line.stroke = 'red';line.fill='red'});
+					if(first){
+						if(pad.crosses[0])
+							pad.crosses[0].visible = true;
+						first = false;
+					}
+				}else{
+					pad.lines.forEach(function(line){line.dirty=true;line.stroke = 'yellow';line.fill='yellow'});
+					if(pad.crosses[0])
+						pad.crosses[0].visible = false;
+				}
+			}
+		});
+    	this.map.renderAll();
+ 	}
  	
 });
 

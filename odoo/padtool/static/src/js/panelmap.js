@@ -25,7 +25,7 @@ var Panelmap = Map.extend(ControlPanelMixin,{
     	
     	this.pad = {
     		curType: 'frame',
-    		objs:[],
+    		//objs:[],
     		selObjs : [],
     		selAnchor:null,
     		isModified:false,
@@ -225,7 +225,7 @@ var Panelmap = Map.extend(ControlPanelMixin,{
         });
     	
     	if(this.pad.curType == 'subMark'){
-    		if(_.some(this.pad.objs,function(obj){return obj.padType == 'subMark'}) == false)
+    		if(_.some(this.map.pads,function(obj){return obj.padType == 'subMark'}) == false)
     			this._drawSubMark();
     	}
     	
@@ -234,15 +234,18 @@ var Panelmap = Map.extend(ControlPanelMixin,{
     	this.map.renderAll();
     	
     	if(this.hawkmap){
+    		this.hawkmap.map.curPad = null;
     		this.hawkmap.map.forEachObject(this.showObj.bind(this));
     		this.hawkmap.map.discardActiveObject();
     		this.hawkmap.map.renderAll();
     		
     		this.hawkmap.$el.find('button.fa-mouse-pointer').click();
-    		
     		var hidden = this.pad.curType == 'frame' || this.pad.curType == 'subMark';
         	this.hawkmap.$el.find('.fa-edit').toggleClass('o_hidden',hidden);
-        	this.hawkmap.$el.find('.fa-copy').toggleClass('o_hidden',true);
+        	
+        	var hidden = _.some(this.map.pads,function(pad){return pad.selected && pad.points.length  && pad.padType == self.pad.curType});
+        	this.hawkmap.$el.find('.fa-copy').toggleClass('o_hidden',!hidden);
+        	
     	}
     	
     	this.$buttons.find('.fa-mouse-pointer').click();
@@ -265,7 +268,7 @@ var Panelmap = Map.extend(ControlPanelMixin,{
     	pad.objs = new Array();
     	var mainMarkStartX = 0;
     	var subMarkStartX = 0;
-    	this.pad.objs.forEach(function(obj){
+    	this.map.pads.forEach(function(obj){
     		if(obj.points.length < 2)
     			return;
     		var o = {
@@ -321,15 +324,15 @@ var Panelmap = Map.extend(ControlPanelMixin,{
     },
     
     _onButtonTrash:function(){
-    	if(this.pad.selObjs.length == 0){
+    	var self = this;
+    	var objs = _.filter(this.map.pads,function(pad){return pad.selected && pad.padType == self.pad.curType});
+    	if(objs.length == 0){
     		this.notification_manager.notify(_t('Incorrect Operation'),_t('Please select one object!'),false);
     		return;
     	}
-    	
-    	var self = this;
+
 		Dialog.confirm(this, (_t("Are you sure you want to remove these items?")), {
             confirm_callback: function () {
-            	var objs = self.pad.selObjs;
             	self.register(objs,'delete');
             	for(var i = 0; i< objs.length;i++){
             		objs[i].clear();
@@ -337,14 +340,6 @@ var Panelmap = Map.extend(ControlPanelMixin,{
             			self.pad.isMainMarkModified = true;
             		}
             		objs[i].points = [];
-            		/*
-            		var length = self.pad.objs.length;
-            		for(var j =0 ; j<length; j++){
-            			if(self.pad.objs[j] == objs[i]){
-            				self.pad.objs.splice(j,1);
-            				break;
-            			}
-            		}*/
             	}
             	
             	self.pad.isModified = true;

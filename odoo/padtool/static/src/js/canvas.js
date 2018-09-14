@@ -11,10 +11,17 @@ var Line = fabric.util.createClass(fabric.Line, {
     stroke: 'yellow',
     initialize: function(points,options) {
     	this.callSuper('initialize',points, options);
-    	this.padType = options.padType || '';
+    	this.pad = options.pad || null;
     },
 
 	_render: function(ctx) {
+		/*if(this.pad.map.curPad == this.pad){
+			this.stroke = 'red';
+			this.fill = 'red';
+		}else{
+			this.stroke = 'yellow';
+			this.fill = 'yellow';
+		}*/
 		this.strokeWidth = 1/this.canvas.getZoom();
 		this.callSuper('_render', ctx);
     }
@@ -351,19 +358,20 @@ var MyRect = Class.extend({
 });
 
 var MyPolyline = Class.extend({
-	init: function(map,padType,showCross=false){
+	init: function(map,padType){
 		this.map = map;
 		this.padType = padType;
 		this.points = new Array();
 		this.crosses = new Array();
 		this.lines = new Array();
-		this.showCross = showCross;
+		this.map.pads.push(this);
+		this.selected = false;
 	},
 	
 	update:function(){
 		this._render();
-		if(this.showCross)
-			this.map.setActiveObject(this.crosses[this.crosses.length -1]);
+		//if(this.showCross)
+		//	this.map.setActiveObject(this.crosses[this.crosses.length -1]);
 		return true;
 	},
 	
@@ -381,6 +389,67 @@ var MyPolyline = Class.extend({
 		
 		this.points.splice(id,1);
 		this._render();
+	},
+	
+	withinRect:function(left,right,top,bottom){
+    	var poly1 = new fabric.Polygon([{x:left,y:top},{x:right,y:top},{x:right,y:bottom},{x:left,y:bottom}]);
+    	
+		var poly2;
+		if(this.points.length == 1){
+			var point = this.points[0];
+			return point.x >= left && point.x <= right && point.y >= top && point.y <= bottom; 
+		}
+		else if(this.points.length == 2){
+			left = Math.min(this.points[0].x,this.points[1].x);
+			right = Math.max(this.points[0].x,this.points[1].x);
+			top = Math.min(this.points[0].y,this.points[1].y);
+			bottom = Math.max(this.points[0].y,this.points[1].y);
+			poly2 = new fabric.Polygon([{x:left,y:top},{x:right,y:top},{x:right,y:bottom},{x:left,y:bottom}]);
+		}else{
+			poly2 = new fabric.Polygon(this.points);
+		}
+		
+		return poly2.isContainedWithinObject(poly1,true,true);
+	},
+	
+	intersectsWithRect:function(left,right,top,bottom){
+    	var poly1 = new fabric.Polygon([{x:left,y:top},{x:right,y:top},{x:right,y:bottom},{x:left,y:bottom}]);
+    	
+		var poly2;
+		if(this.points.length == 1){
+			var point = this.points[0];
+			return point.x >= left && point.x <= right && point.y >= top && point.y <= bottom; 
+		}
+		else if(this.points.length == 2){
+			left = Math.min(this.points[0].x,this.points[1].x);
+			right = Math.max(this.points[0].x,this.points[1].x);
+			top = Math.min(this.points[0].y,this.points[1].y);
+			bottom = Math.max(this.points[0].y,this.points[1].y);
+			poly2 = new fabric.Polygon([{x:left,y:top},{x:right,y:top},{x:right,y:bottom},{x:left,y:bottom}]);
+		}else{
+			poly2 = new fabric.Polygon(this.points);
+		}
+		
+		return poly1.intersectsWithObject(poly2,true,true);
+	},
+	
+	containsPoint:function(point){
+		var poly
+		if(this.points.length == 1){
+			return false;
+		}
+		else if(this.points.length == 2){
+			var left = Math.min(this.points[0].x,this.points[1].x);
+			var right = Math.max(this.points[0].x,this.points[1].x);
+			var top = Math.min(this.points[0].y,this.points[1].y);
+			var bottom = Math.max(this.points[0].y,this.points[1].y);
+			//return point.x >= left && point.x <= right && point.y >= top && point.y <= bottom;
+			poly = new fabric.Polygon([{x:left,y:top},{x:right,y:top},{x:right,y:bottom},{x:left,y:bottom}]);
+		}else{
+			poly = new fabric.Polygon(this.points);
+		}
+
+		return  poly.containsPoint(point,null,true,true);
 	},
 	
 	_checkIntersection:function(point){
@@ -429,10 +498,6 @@ var MyPolyline = Class.extend({
 			var line = this.lines.pop()
 			this.map.remove(line);
 		}
-		if(this.polyline){
-			this.map.remove(this.polyline);
-			delete this.polyline;
-		}
 	},
 	
 	updateCross(show){
@@ -446,103 +511,57 @@ var MyPolyline = Class.extend({
 	
 	_render: function(){
 		this.clear();
-		/*
-		if(this.points.length == 2){
-			var pts = new Array();
-			pts[0] = {x:Math.min(this.points[0].x,this.points[1].x),y:Math.min(this.points[0].y,this.points[1].y)};
-			pts[1] = {x:Math.min(this.points[0].x,this.points[1].x),y:Math.max(this.points[0].y,this.points[1].y)};
-			pts[2] = {x:Math.max(this.points[0].x,this.points[1].x),y:Math.max(this.points[0].y,this.points[1].y)};
-			pts[3] = {x:Math.max(this.points[0].x,this.points[1].x),y:Math.min(this.points[0].y,this.points[1].y)};
-			
-			this.polyline = new Polygon(pts,{
-				pad:this,
-				//visible:this.padType != 'frame' ,
-				hoverCursor:this.map.isPanel?"":"move",
-				lockMovementX:this.map.isPanel,
-				lockMovementY:this.map.isPanel,
-			});
-			this.map.add(this.polyline);
-			this.polyline.setCoords();
-		}else if(this.points.length > 2){
-			this.polyline = new Polygon(this.points,{
-				pad:this,
-				hoverCursor:this.map.isPanel?"":"move",
-				lockMovementX:this.map.isPanel,
-				lockMovementY:this.map.isPanel,
-			});
-			this.map.add(this.polyline);
-			this.polyline.setCoords();
-			
-		}*/
-		
+
 		var wh = 10/this.map.getZoom();
 		for(var i = 0; i < this.points.length; i++){
-			var cross = new Cross({ 
-				id:i,
-				top: this.points[i].y, 
-				left: this.points[i].x,
-				width:wh,
-				height:wh,
-				pad:this,
-				hoverCursor:this.map.isPanel?"":"move",
-				lockMovementX:this.map.isPanel,
-				lockMovementY:this.map.isPanel,
-				visible:this.showCross &&(this.padType != 'region'||this.padType != 'subMark') ,
-				stroke:(i==0 && this.map.isPanel == false)?'aqua':'lime'
-				});
-			this.crosses.push(cross);
-			this.map.add(cross);
-			
-			if(this.points.length == 1)
-				break;
-			if(this.points.length == 2){
-				var line1 = new Line([this.points[0].x,this.points[0].y,this.points[0].x,this.points[1].y],{padType:this.padType,visible:this.padType != 'frame'});
-		 		var line2 = new Line([this.points[0].x,this.points[0].y,this.points[1].x,this.points[0].y],{padType:this.padType,visible:this.padType != 'frame'});
-		 		var line3 = new Line([this.points[1].x,this.points[1].y,this.points[1].x,this.points[0].y],{padType:this.padType,visible:this.padType != 'frame'});
-		 		var line4 = new Line([this.points[1].x,this.points[1].y,this.points[0].x,this.points[1].y],{padType:this.padType,visible:this.padType != 'frame'});
-		 		this.lines.push(line1,line2,line3,line4);
-		 		cross = new Cross({ 
+			if(this.padType != 'region' && this.padType != 'subMark'){
+				var cross = new Cross({ 
 					id:i,
-					top: this.points[1].y, 
-					left: this.points[1].x,
+					top: this.points[i].y, 
+					left: this.points[i].x,
 					width:wh,
 					height:wh,
 					pad:this,
 					hoverCursor:this.map.isPanel?"":"move",
 					lockMovementX:this.map.isPanel,
 					lockMovementY:this.map.isPanel,
-					visible:this.showCross &&(this.padType != 'region'||this.padType != 'subMark') ,
-					stroke:(i==0 && this.map.isPanel == false)?'aqua':'lime'
+					//visible:this.showCross,
+					stroke:i==0?'aqua':'lime'
 					});
-		 		this.crosses.push(cross);
-		 		//this.map.add(cross);
-		 		this.map.add(line1,line2,line3,line4,cross);
-				break;
+				this.crosses.push(cross);
+				this.map.add(cross);
 			}
 			
-			if(i == 0){
-				var line = new Line(
-						[this.points[this.points.length-1].x,this.points[this.points.length-1].y,this.points[i].x,this.points[i].y],
-						{padType:this.padType,fill: 'red',stroke: 'red',}
+			if(this.padType == 'frame')
+				continue;
+			
+			if(i >= 1){
+				if(this.points.length == 2){
+					var line1 = new Line([this.points[0].x,this.points[0].y,this.points[0].x,this.points[1].y],{pad:this});
+			 		var line2 = new Line([this.points[0].x,this.points[0].y,this.points[1].x,this.points[0].y],{pad:this});
+			 		var line3 = new Line([this.points[1].x,this.points[1].y,this.points[1].x,this.points[0].y],{pad:this});
+			 		var line4 = new Line([this.points[1].x,this.points[1].y,this.points[0].x,this.points[1].y],{pad:this});
+			 		this.lines.push(line1,line2,line3,line4);
+			 		this.map.add(line1,line2,line3,line4);
+				}else{
+					var line = new Line(
+							[this.points[i-1].x,this.points[i-1].y,this.points[i].x,this.points[i].y],
+							{pad:this}
 						);
-				this.lines.push(line);
-				this.map.add(line);
-			}
-			else if(i > 0){
-				var line = new Line(
-						[this.points[i-1].x,this.points[i-1].y,this.points[i].x,this.points[i].y],
-						{padType:this.padType}
-					);
-				this.lines.push(line);
-				this.map.add(line);
+					this.lines.push(line);
+					this.map.add(line);
+					
+					if(i == this.points.length -1){
+						var line = new Line(
+								[this.points[0].x,this.points[0].y,this.points[i].x,this.points[i].y],
+								{pad:this,fill: 'red',stroke: 'red',}
+								);
+						this.lines.push(line);
+						this.map.add(line);
+					}
+				}
 			}
 		}
-		
-		//this.polyline = new fabric.Group(this.lines);
-		//this.polyline.pad = this;
-		//this.map.add(this.polyline);
-		//this.map.remove(this.polyline);
-		
 	}
 });
 
