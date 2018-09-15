@@ -22,7 +22,6 @@ var Hawkmap = Widget.extend({
         'click button.fa-edit':'_onButtonSelectMode', 
         'click button.fa-copy':'_onButtonSelectMode', 
         'click button.fa-cut':'_onButtonCut', 
-        'click button.fa-align-justify':'_onButtonAlign',
     },
 
     init: function(parent,option){
@@ -50,17 +49,23 @@ var Hawkmap = Widget.extend({
 		
 		//this.map.on('mouse:over',this._onMouseOver.bind(this));
 		this.map.on('mouse:out', this._onMouseOut.bind(this));
+		this.map.on('mouse:dblclick',this._onMouseDblclick.bind(this));
 		
-		//this.map.on('selection:updated',this._onObjectSelect.bind(this));
-		//this.map.on('selection:created',this._onObjectSelect.bind(this));
-//		this.map.on('selection:updated',this._onSelectionUpdated.bind(this));
-//		this.map.on('selection:created',this._onSelectionUpdated.bind(this));
-//		this.map.on('selection:cleared',this._onSelectionCleared.bind(this));
+		this.map.on('selection:updated',this._onObjectSelect.bind(this));
+		this.map.on('selection:created',this._onObjectSelect.bind(this));
 //		this.map.on('object:moved',this._onObjectMoved.bind(this));
 		
 		var hidden = this.pad.curType == 'frame' || this.pad.curType == 'subMark';
     	this.$el.find('.fa-edit').toggleClass('o_hidden',hidden);
-    	this.$el.find('.fa-copy').toggleClass('o_hidden',true);
+    	this.$el.find('.fa-copy').toggleClass('o_hidden',hidden);
+    },
+    
+    destroy: function(){	
+    	if(this.map){
+    		this.map.clear();
+    		delete this.map;
+    	}
+    	this._super.apply(this, arguments);
     },
     
     showImage: function(zoom){
@@ -87,7 +92,7 @@ var Hawkmap = Widget.extend({
     		}, 0);
     	
     	if(imgWidth == 0 || imgHeight == 0){
-    		this.parent.notification_manager.notify(_t('Incorrect Operation'),_t('Width  or height is 0!'),false);
+    		this.parent.notification_manager.warn(_t('Incorrect Operation'),_t('Width  or height is 0!'),false);
     		return;
     	}
     		
@@ -98,7 +103,7 @@ var Hawkmap = Widget.extend({
     	console.log(strBlocks+'\n');
     	image.setSrc('/padtool/'+this.parent.glassName+'/image'+imgWidth+'X'+imgHeight+'?strBlocks='+strBlocks, function(img) {
     		if(img.width == 0 || img.height == 0){
-    			self.parent.notification_manager.notify(_t('Incorrect Operation'),_t('Image is not exsit!'),false);
+    			self.parent.notification_manager.warn(_t('Incorrect Operation'),_t('Image is not exsit!'),false);
     			return;
     		}
         	if(self.image !== undefined)
@@ -305,7 +310,7 @@ var Hawkmap = Widget.extend({
         	    			obj.pad.panelpad.points[i].y = tmpPoints[i].y;
         	    		}
             			
-            			self.parent.notification_manager.notify(_t('Incorrect Operation'),_t('Mark is across multiple IPs!'),false);
+            			self.parent.notification_manager.warn(_t('Incorrect Operation'),_t('Mark is across multiple IPs!'),false);
             		}
 	    		}
 	    		
@@ -318,99 +323,18 @@ var Hawkmap = Widget.extend({
 		
     },
     _onObjectSelect: function(opt){
-    	if(opt.target.pad){
+    	if(opt.target.pad && opt.target.type === 'cross' && opt.target.pad.padType != 'frame'){
     		this.curPad = opt.target.pad;
-    	}
-    	
-    	var hidden = opt.selected.length != 1 ||  opt.selected[0].type != 'cross' || opt.selected[0].pad.padType == 'frame';
-    	this.$el.find('.fa-cut').toggleClass('o_hidden',hidden);
-
-    },
-    
-    _onSelectionUpdated: function(opt){
-    	if(opt.selected.length == 1 && opt.selected[0].type == 'cross'){
-    		this.pad.selAnchor = opt.selected[0].pad.crosses[opt.selected[0].id]; 
-    		this.curPad = opt.selected[0].pad;
+    		this._isSelectCross = true;
+    		this._updateForMode();
     		
-    		this.$el.find('.fa-cut').toggleClass('o_hidden',opt.selected[0].pad.padType == 'frame');
-    		return;
+        	this.$el.find('.fa-cut').toggleClass('o_hidden',false);
+        	this.map.renderAll();
+    	}else{
+    		this._isSelectCross = false;
     	}
-    	this.$el.find('.fa-cut').toggleClass('o_hidden',true);
-    	
-    	for(var i = 0; i< this.pad.selObjs.length;i++){
-    		this.pad.selObjs[i].updateCross(false);
-    		this.pad.selObjs[i].hawkpad.updateCross(false);
-    	}
-    	
-    	this.pad.selObjs = [];
-    	this.pad.selAnchor = null;
-    	var activeObjects = this.map.getActiveObjects();
-    	for(var i = 0; i< activeObjects.length;i++){
-    		if(activeObjects[i].type == 'cross'){
-    			this.pad.selAnchor = activeObjects[i].pad.crosses[activeObjects[i].id]; 
-    		}else if(activeObjects[i].type == 'goa'){
-    		}
-    		else if(activeObjects[i].pad && (activeObjects[i].pad.padType == 'mainMark' || activeObjects[i].pad.padType == 'uninspectZone'|| activeObjects[i].pad.padType == 'inspectZone')){
-    			this.pad.selObjs.push(activeObjects[i].pad.panelpad);
-    			activeObjects[i].pad.updateCross(true);
-    			activeObjects[i].pad.panelpad.updateCross(true);
-    		}
-    	}
-    	
-    	
-    	if (activeObjects.length > 1) {
-    		var obj = this.map.getActiveObject();
-    		obj.set({
-    			hasControls:false,
-    			hasRotatingPoint:false,
-    		});
-        }
-    	
-    	if(this.pad.selAnchor){
-    		this.curPad = this.pad.selAnchor.pad.hawkpad;
-    		this.parent.map._setActiveObject(this.pad.selAnchor.pad.crosses[this.pad.selAnchor.id]);
-    	}
-    	else{
-    		if(this.pad.selObjs.length > 0){
-    			this.curPad = this.pad.selObjs[0].hawkpad;
-    			this.parent.map._setActiveObject(this.pad.selObjs[0].crosses[0]);
-    			this.pad.selAnchor = this.pad.selObjs[0].crosses[0]; 
-    		}
-    			
-    	}
-    	
-    	var hidden = this.pad.curType != 'inspectZone' || this.pad.selObjs.length == 0;
-    	this.$el.find('.fa-align-justify').toggleClass('o_hidden',hidden);
-    	var hidden = this.pad.selObjs.length == 0;
-    	this.$el.find('.fa-copy').toggleClass('o_hidden',hidden);
-    	
-    	this.parent.map.renderAll();
     },
 
-    _onSelectionCleared: function(opt){
-    	if(this.map.hoverCursor == 'crosshair' || this.map.hoverCursor == 'copy')
-    		return;
-    	
-    	for(var i = 0; i< this.pad.selObjs.length;i++){
-    		this.pad.selObjs[i].updateCross(false);
-    		this.pad.selObjs[i].hawkpad.updateCross(false);
-    	}
-    	
-    	this.pad.selObjs = [];
-    	this.pad.selAnchor = null;
-    	this.$el.find('.fa-cut').toggleClass('o_hidden',true);
-    	this.curPad = null;
-    	
-    	var hidden = this.pad.curType != 'inspectZone' || this.pad.selObjs.length == 0;
-    	this.$el.find('.fa-align-justify').toggleClass('o_hidden',hidden);
-    	var hidden = this.pad.selObjs.length == 0;
-    	this.$el.find('.fa-copy').toggleClass('o_hidden',hidden);
-    	
-    	this.parent.map.discardActiveObject();
-    	this.parent.map.renderAll();
-    },
-    
-    
     _animate: function () {
     	var objs = this.map.getActiveObjects();
 		if(objs.length && objs[0].animateColor){
@@ -458,6 +382,7 @@ var Hawkmap = Widget.extend({
     	if(opt.target.type != "cross")
     		return;
     	
+    	this._isSelectCross = true;
     	if(opt.target.pad.padType == 'frame'){
 			var {dOutputX:ux2, dOutputY:uy2} = this.parent.coordinate.HawkmapCoordinateToUMCoordinate(opt.target.left,this.image.height-opt.target.top);
 			if(this._checkFrame(ux2,uy2,opt.target.id,opt.target.pad.panelpad == this.parent.innerFrame)){
@@ -491,6 +416,7 @@ var Hawkmap = Widget.extend({
     			opt.target.pad.points[opt.target.id].y = opt.target.top;
     			if(opt.target.pad){
     	    		opt.target.pad.update();
+    	    		opt.target.pad.updateCross(true);
     	    	}
     			this.parent.register(opt.target.pad.panelpad);
     			
@@ -520,13 +446,14 @@ var Hawkmap = Widget.extend({
     		}else{
 				opt.target.left = opt.target.pad.points[opt.target.id].x;
 				opt.target.top = opt.target.pad.points[opt.target.id].y;
-    			this.parent.notification_manager.notify(_t('Incorrect Operation'),_t('Mark is across multiple IPs!'),false);
+    			this.parent.notification_manager.warn(_t('Incorrect Operation'),_t('Mark is across multiple IPs!'),false);
     		}
 		}else{
 			opt.target.pad.points[opt.target.id].x = opt.target.left;
 			opt.target.pad.points[opt.target.id].y = opt.target.top;
 			if(opt.target.pad){
 	    		opt.target.pad.update();
+	    		opt.target.pad.updateCross(true);
 	    	}
 			this.parent.register(opt.target.pad.panelpad);
 			var {dOutputX:ux2, dOutputY:uy2} = this.parent.coordinate.HawkmapCoordinateToUMCoordinate(opt.target.left,this.image.height-opt.target.top);
@@ -620,9 +547,11 @@ var Hawkmap = Widget.extend({
     	}else if(!_isDrawRect && this.map.hoverCursor == 'copy'){
     		var self = this;
     		var firstId = _.findIndex(this.parent.map.pads,function(pad){return pad.selected && pad.points.length  && pad.padType == self.pad.curType})
-    		if(firstId == -1)
+    		if(firstId == -1){
+    			self.parent.notification_manager.warn(_t('Incorrect Operation'),_t('Please select one object!'),false);
     			return;
-    			
+    		}
+
     		let {dOutputX:ux,dOutputY:uy} = this.parent.coordinate.HawkmapCoordinateToUMCoordinate(endPointer.x/zoom,this.image.height-endPointer.y/zoom);
     		var uoffsetX = ux - this.parent.map.pads[firstId].points[0].ux;
     		var uoffsetY = uy - this.parent.map.pads[firstId].points[0].uy;
@@ -661,7 +590,7 @@ var Hawkmap = Widget.extend({
             			
             			self.pad.isMainMarkModified = true;
             		}else{
-            			self.parent.notification_manager.notify(_t('Incorrect Operation'),_t('Mark is across multiple IPs!'),false);
+            			self.parent.notification_manager.warn(_t('Incorrect Operation'),_t('Mark is across multiple IPs!'),false);
             			return;
             		}
 	    		}
@@ -739,7 +668,7 @@ var Hawkmap = Widget.extend({
 	    		//this.pad.objs.push(pad);
 	    		this.pad.isModified = true;
 			}else{
-				this.parent.notification_manager.notify(_t('Incorrect Operation'),_t('Mark is across multiple IPs!'),false);
+				this.parent.notification_manager.warn(_t('Incorrect Operation'),_t('Mark is across multiple IPs!'),false);
 			}
     	}else if(!_isDrawRect && this.map.hoverCursor == 'crosshair' && (this.pad.curType=='inspectZone' || this.pad.curType=='uninspectZone')){
     		if(!this.map.curPad){
@@ -758,10 +687,15 @@ var Hawkmap = Widget.extend({
     			this.map.curPad.addPoint({x: endPointer.x/zoom, y: endPointer.y/zoom})
     			this.pad.isModified = true;
     		}else{
-    			this.parent.notification_manager.notify(_t('Incorrect Operation'),_t('Please enter valid point!'),false);
+    			this.parent.notification_manager.warn(_t('Incorrect Operation'),_t('Please enter valid point!'),false);
     		}
     			
 		}else if(this.map.hoverCursor == 'default'){
+			if(this._isSelectCross){
+				this._isSelectCross = false;
+				return;
+			}
+			
 			var x = opt.pointer.x/zoom;
 			var y = opt.pointer.y/zoom;
 			if(this.map.curPad){
@@ -792,14 +726,10 @@ var Hawkmap = Widget.extend({
 					}
 				}
 			}
-			this.map.discardActiveObject();
+			_isDrawRect && this.map.discardActiveObject();
 			this.parent.updateForSelect();
 			
-			var hidden = this.pad.curType != 'inspectZone' || this.map.curPad == null;
-	    	this.$el.find('.fa-align-justify').toggleClass('o_hidden',hidden);
-	    	var self = this;
-	    	var hidden = _.some(this.parent.map.pads,function(pad){return pad.selected && pad.points.length  && pad.padType == self.pad.curType});
-	    	this.$el.find('.fa-copy').toggleClass('o_hidden',!hidden);
+	    	this.$el.find('.fa-cut').toggleClass('o_hidden',true);
 		}
 
     	this._updateForMode();
@@ -876,26 +806,6 @@ var Hawkmap = Widget.extend({
 			}
 		});
     	
-    	if(this.map.hoverCursor == 'default'){
-    		//this.map.discardActiveObject();
-    		//this.curPad = null;
-    	}else if(this.map.hoverCursor == 'crosshair'){
-			for(var i = 0; i< this.pad.selObjs.length;i++){
-	    		this.pad.selObjs[i].updateCross(false);
-	    		this.pad.selObjs[i].hawkpad.updateCross(false);
-	    	}
-	    	
-	    	this.pad.selObjs = [];
-	    	this.pad.selAnchor = null;
-    	}else if(this.map.hoverCursor == 'copy'){
-    		
-    	}else{
-    		this.map.discardActiveObject();
-    	}
-    	
-    	var hidden = _.some(this.parent.map.pads,function(pad){return pad.selected && pad.points.length  && pad.padType == self.pad.curType});
-    	this.$el.find('.fa-copy').toggleClass('o_hidden',!hidden);
-    		
     	this.map.requestRenderAll();
     },
     
@@ -939,26 +849,38 @@ var Hawkmap = Widget.extend({
     		}
     		
     	}else{
-    		this.parent.notification_manager.notify(_t('Incorrect Operation'),_t('Please select one object!'),false);
+    		this.parent.notification_manager.warn(_t('Incorrect Operation'),_t('Please select one object!'),false);
     	}
     	
+    },
+    
+    _onMouseDblclick:function(opt){
+    	if(this.map.hoverCursor !== 'default')
+    		return;
+    	if(this.pad.curType !== 'inspectZone')
+    		return;
+    	
+   	 	if(opt.target.pad){
+   	 		this.map.curPad = opt.target.pad;
+   	 		this._onButtonAlign();
+   	 	}
     },
     
     _onButtonAlign:function(){
     	if(this.pad.curType != 'inspectZone')
     		return;
+    	if(this.map.curPad == null || this.map.curPad.padType !== this.pad.curType)
+    		return;
     	
     	var self = this;
-    	var objs = this.map.getActiveObjects();
-    	if(objs.length == 1 && objs[0].pad.padType && objs[0].pad.padType == this.pad.curType){
-    		
-    		var pad = objs[0].pad.panelpad;
-        	var $content = $(QWeb.render("GoaDialog"));
+    	var pad = this.map.curPad.panelpad;
+        var $content = $(QWeb.render("GoaDialog"));
             
-            this.dialog = new Dialog(this, {
-                title: _t('Set Goa'),
-                size: 'medium',
-                buttons: [{text: _t('Confirm'), classes: 'btn-primary', close: true, click: function () {
+        this.dialog = new Dialog(this, {
+        	title: _t('Set Goa'),
+        	size: 'medium',
+        	$content: $content,
+        	buttons: [{text: _t('Confirm'), classes: 'btn-primary', close: true, click: function () {
                 	pad.periodX = parseFloat(this.$content.find('.o_set_periodx_input').val());
                 	pad.periodY = parseFloat(this.$content.find('.o_set_periody_input').val());
                 	pad.D1G1 = this.$content.find('.o_set_d1g1_input')[0].checked?1:0;
@@ -977,44 +899,42 @@ var Hawkmap = Widget.extend({
         			angle = fabric.util.radiansToDegrees(angle);
         			period = period / self.parent.coordinate.mpMachinePara.aIPParaArray[0].aScanParaArray[0].dResolutionY;
         			
-        			if(objs[0].pad.goa === undefined){
+        			if(self.map.curPad.goa === undefined){
         				var minX,minY,maxX,maxY;
-        				objs[0].pad.points.forEach(function(p){
+        				self.map.curPad.points.forEach(function(p){
                 			minX = minX == undefined?p.x:(p.x>minX?minX:p.x);
                 			minY = minY == undefined?p.y:(p.y>minY?minY:p.y);
                 			maxX = maxX == undefined?p.x:(p.x<maxX?maxX:p.x);
                 			maxY = maxY == undefined?p.y:(p.y<maxY?maxY:p.y);
                 		})
-            			objs[0].pad.goa = new Mycanvas.Goa({
+            			self.map.curPad.goa = new Mycanvas.Goa({
             				left:(minX+maxX)/2,
                 			top:(minY+maxY)/2,
-         	    			pad:objs[0].pad,
+         	    			pad:self.map.curPad,
          	    			period,
         					angle,
         					visible:true
          	    		}); 
-         	        	self.map.add(objs[0].pad.goa);
+         	        	self.map.add(self.map.curPad.goa);
         			}else{
         				var dirty = true;
-            			var height = period * objs[0].pad.goa.number;
-            			objs[0].pad.goa.set({angle,period,dirty,height});
-            			objs[0].pad.goa.setCoords();
+            			var height = period * self.map.curPad.goa.number;
+            			self.map.curPad.goa.set({angle,period,dirty,height});
+            			self.map.curPad.goa.setCoords();
         			}
                 	self.map.renderAll();
                     
                 }}, {text: _t('Discard'), close: true}],
-                $content: $content,
-            });
-            this.dialog.opened().then(function () {
+        });
+        
+        this.dialog.opened().then(function () {
                 self.dialog.$('.o_set_periodx_input').val(pad.periodX);
                 self.dialog.$('.o_set_periody_input').val(pad.periodY);
                 self.dialog.$('.o_set_d1g1_input')[0].checked = pad.D1G1 == 1;
-                
             });
-            this.dialog.open();
-    	}
-    	
+        this.dialog.open();
     },
+    
     _showMark:function(markImage,pad){
 		var self = this;
 		var tempCanvas = new fabric.StaticCanvas();

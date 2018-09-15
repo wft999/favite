@@ -25,9 +25,6 @@ var Panelmap = Map.extend(ControlPanelMixin,{
     	
     	this.pad = {
     		curType: 'frame',
-    		//objs:[],
-    		selObjs : [],
-    		selAnchor:null,
     		isModified:false,
     		isSubMarkModified:false,
     	};
@@ -76,11 +73,33 @@ var Panelmap = Map.extend(ControlPanelMixin,{
     		var su = self._super;
     		Dialog.confirm(this, (_t("The current pad was modified. Save changes?")), {
                 confirm_callback: function () {
-                    self._onButtonSave();
-                    su.apply(self, arguments);
+                    self._onButtonSave().then(function(){
+                    	while(self.map.pads.length){
+                			var pad = self.map.pads.pop();
+                			pad.clear();
+                			delete pad.points;
+                		}
+
+                    	self.map.clear();
+                		delete self.image;
+                		delete self.map;	
+
+                        su.apply(self, arguments);
+                    });
                 },
             });
     	}else{
+    		if(this.map){
+        		while(this.map.pads.length){
+        			var pad = this.map.pads.pop()
+        			pad.clear();
+        			delete pad.points;
+        		}
+
+        		this.map.clear();
+        		delete this.image;
+        		delete this.map;
+        	}
     		this._super.apply(this, arguments);
     	}
     	
@@ -242,10 +261,7 @@ var Panelmap = Map.extend(ControlPanelMixin,{
     		this.hawkmap.$el.find('button.fa-mouse-pointer').click();
     		var hidden = this.pad.curType == 'frame' || this.pad.curType == 'subMark';
         	this.hawkmap.$el.find('.fa-edit').toggleClass('o_hidden',hidden);
-        	
-        	var hidden = _.some(this.map.pads,function(pad){return pad.selected && pad.points.length  && pad.padType == self.pad.curType});
-        	this.hawkmap.$el.find('.fa-copy').toggleClass('o_hidden',!hidden);
-        	
+         	this.hawkmap.$el.find('.fa-copy').toggleClass('o_hidden',hidden);
     	}
     	
     	this.$buttons.find('.fa-mouse-pointer').click();
@@ -271,6 +287,11 @@ var Panelmap = Map.extend(ControlPanelMixin,{
     	this.map.pads.forEach(function(obj){
     		if(obj.points.length < 2)
     			return;
+    		if(_.some(obj.points,function(p){return p.ux == undefined || p.uy == undefined})){
+    			self.notification_manager.warn(_t('Operation Result'),_t('Point is not correct !'),false);
+    			return;
+    		}
+    		
     		var o = {
     			padType: obj.padType,
     			points:obj.points,
@@ -300,7 +321,7 @@ var Panelmap = Map.extend(ControlPanelMixin,{
     	});
     	//pad.pMarkRegionArray = this.pMarkRegionArray;
     	
-    	this._rpc({model: 'padtool.pad',method: 'save_pad',args: [this.glassName,this.panelName,pad],}).then(function(){
+    	return this._rpc({model: 'padtool.pad',method: 'save_pad',args: [this.glassName,this.panelName,pad],}).then(function(){
     		self.notification_manager.notify(_t('Operation Result'),_t('Pad was succesfully saved!'),false);
     		self.pad.isModified = false;
     		self.pad.isSubMarkModified = false;
@@ -327,7 +348,7 @@ var Panelmap = Map.extend(ControlPanelMixin,{
     	var self = this;
     	var objs = _.filter(this.map.pads,function(pad){return pad.selected && pad.padType == self.pad.curType});
     	if(objs.length == 0){
-    		this.notification_manager.notify(_t('Incorrect Operation'),_t('Please select one object!'),false);
+    		this.notification_manager.warn(_t('Incorrect Operation'),_t('Please select one object!'),false);
     		return;
     	}
 

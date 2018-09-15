@@ -270,7 +270,7 @@ Section $(TITLE_OpenERP_Server) SectionOpenERP_Server
     WriteIniStr "$INSTDIR\server\odoo.conf" "options" "data_dir" "$INSTDIR\appdata"
     
 	WriteIniStr "$INSTDIR\server\odoo.conf" "options" "glass_root_path" "$TextGlassDataPath"
-	WriteIniStr "$INSTDIR\server\odoo.conf" "options" "list_db" "False"
+	#WriteIniStr "$INSTDIR\server\odoo.conf" "options" "list_db" "False"
 
     # if we're going to install postgresql force it's path,
     # otherwise we consider it's always done and/or correctly tune by users
@@ -328,7 +328,7 @@ Section -Post
 	nsExec::ExecToLog '"$INSTDIR\PostgreSQL\bin\createdb.exe" \
 		--host localhost --port 5432 --username "openpg" --no-password favite'
 	nsExec::ExecToLog '"$INSTDIR\PostgreSQL\bin\pg_restore.exe" \
-		--host localhost --port 5432 --username "openpg" --dbname "favite" --no-password  \
+		--host localhost --port 5432 --username "openpg" --no-password --dbname "favite"   \
 		--verbose "$INSTDIR\server\favite.backup"'
 		
     WriteRegExpandStr HKLM "${UNINSTALL_REGISTRY_KEY}" "UninstallString" "$INSTDIR\Uninstall.exe"

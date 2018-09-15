@@ -9,6 +9,7 @@ var Line = fabric.util.createClass(fabric.Line, {
 	originY:"top",
 	fill: 'yellow',
     stroke: 'yellow',
+    objectCaching:false,
     initialize: function(points,options) {
     	this.callSuper('initialize',points, options);
     	this.pad = options.pad || null;
@@ -113,11 +114,8 @@ var Goa = fabric.util.createClass(fabric.Object, {
     cornerSize:5,
 	originX:"center",
 	originY:"center",
-	//hoverCursor:"move",
-	//lockMovementX:true,
-	//lockMovementY:true,
-	//hasControls: false,
-	
+	hoverCursor:"move",
+
 	D1G1:0,
 	period:20,
 	number:5,
@@ -178,6 +176,7 @@ var Cross = fabric.util.createClass(fabric.Object, {
 	lockMovementY:true,
 	visible:false,
 	stroke:"yellow",
+	objectCaching:false,
     initialize: function(options) {
     	this.callSuper('initialize', options);
     	this.pad = options.pad || null;
@@ -370,8 +369,6 @@ var MyPolyline = Class.extend({
 	
 	update:function(){
 		this._render();
-		//if(this.showCross)
-		//	this.map.setActiveObject(this.crosses[this.crosses.length -1]);
 		return true;
 	},
 	
@@ -525,7 +522,6 @@ var MyPolyline = Class.extend({
 					hoverCursor:this.map.isPanel?"":"move",
 					lockMovementX:this.map.isPanel,
 					lockMovementY:this.map.isPanel,
-					//visible:this.showCross,
 					stroke:i==0?'aqua':'lime'
 					});
 				this.crosses.push(cross);

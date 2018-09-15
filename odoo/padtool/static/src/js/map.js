@@ -62,19 +62,9 @@ var Map = Widget.extend({
     		self.map.on('mouse:down',self._onMouseDown.bind(self));
     		self.map.on('mouse:dblclick',self._onMouseDblclick.bind(self));
 
-    		//setTimeout(self._animate.bind(self), 500);
-    		//self.map.on('object:moving',_.debounce(self._onObjectMoving.bind(self), 100));
-    		//self.map.on('object:moving',self._onObjectMoving.bind(self));
     		self.map.on('object:moved',self._onObjectMoved.bind(self));
     		self.map.on('object:scaled',self._onObjectScaled.bind(self));
-    		//self.map.on('object:moving',self._onObjectScaling.bind(self));
-    		//self.map.on('object:scaling',self._onObjectScaling.bind(self));
-    		//self.map.on('object:rotating',self._onObjectScaling.bind(self));
-    		
-    		//self.map.on('selection:updated',self._onSelectionUpdated.bind(self));
-    		//self.map.on('selection:created',self._onSelectionUpdated.bind(self));
-    		//self.map.on('selection:cleared',self._onSelectionCleared.bind(self));
-    		
+
     		self.keyupHandler = self._onKeyup.bind(self);
     		$('body').on('keyup', self.keyupHandler);
     		
@@ -171,63 +161,8 @@ var Map = Widget.extend({
             e.preventDefault();	
     	}
     },
-    _onSelectionUpdated: function(opt){
-    	if(opt.selected.length == 1 && opt.selected[0].type == 'cross'){
-    		this.pad.selAnchor = opt.selected[0]; 
-    		return;
-    	}
-    	
-    	for(var i = 0; i< this.pad.selObjs.length;i++){
-    		this.pad.selObjs[i].updateCross(false);
-    	}
-    	
-    	this.pad.selObjs = [];
-    	this.pad.selAnchor = null;
-    	var activeObjects = this.map.getActiveObjects();
-    	for(var i = 0; i< activeObjects.length;i++){
-    		if(activeObjects[i].type == 'cross'){
-    			this.pad.selAnchor = activeObjects[i]; 
-    		}else if(activeObjects[i].pad && (activeObjects[i].pad.padType == 'mainMark' || activeObjects[i].pad.padType == 'uninspectZone'|| activeObjects[i].pad.padType == 'inspectZone')){
-    			this.pad.selObjs.push(activeObjects[i].pad);
-    			activeObjects[i].pad.updateCross(true);
-    		}
-    	}
-    	
-    	if(this.pad.selAnchor)
-    		this.map._setActiveObject(this.pad.selAnchor);
-    	else{
-    		if(this.pad.selObjs.length > 0){
-    			this.map._setActiveObject(this.pad.selObjs[0].crosses[0]);
-    			this.pad.selAnchor = this.pad.selObjs[0].crosses[0]; 
-    		}
-    			
-    	}
-    	
-    	//this.hawkmap && this.hawkmap.$el.find('.fa-copy').toggleClass('o_hidden',this.pad.selObjs.length == 0);
-    },
 
-    _onSelectionCleared: function(opt){
-    	for(var i = 0; i< this.pad.selObjs.length;i++){
-    		this.pad.selObjs[i].updateCross(false);
-    	}
-    	
-    	this.pad.selObjs = [];
-    	this.pad.selAnchor = null;
-    	//this.hawkmap && this.hawkmap.$el.find('.fa-copy').toggleClass('o_hidden',this.pad.selObjs.length == 0);
-    },
-    
-    _animate: function () {
-    	var objs = this.map.getActiveObjects();
-		if(objs.length && objs[0].animateColor){
-			objs[0].animateColor();
-			objs[0].dirty = true;
-			this.map.renderAll();
-		}
-        
-        setTimeout(this._animate.bind(this), 500);
-      },
-      
-      _onObjectScaled: function(opt){
+	_onObjectScaled: function(opt){
      	 if(opt.target.type == "hawkeye"){
      		if(((opt.target.height * opt.target.scaleY) / this.coordinate.pmpPanelMapPara.dRatioY) > this.globalConf.hawk_height){
      			opt.target.scaleY = this.globalConf.hawk_height * this.coordinate.pmpPanelMapPara.dRatioY / opt.target.height ;
@@ -241,18 +176,18 @@ var Map = Widget.extend({
      		$('.panel-hawk').toggleClass('o_hidden');
      		
       		this.hawkmap.showImage();
+      		this.isObjectScaled = true;
       	}
       },
       
-      _onObjectMoved: function(opt){
+	_onObjectMoved: function(opt){
     	 if(opt.target.type == "hawkeye"){
      		this.hawkmap.showImage();
+     		this.isObjectMoved = true;
      	}
      },
      
     _onMouseDown:function(opt){
-
-    	this.map._isMousedown = true;
     	this.map.startPointer = opt.pointer;
     },
 	_onMouseMove:function(opt){
@@ -340,15 +275,34 @@ var Map = Widget.extend({
     	var endPointer = opt.pointer;
     	var _isDrawRect = this.map.startPointer.x != endPointer.x ||this.map.startPointer.y != endPointer.y;
     	
-    	endPointer.x /= zoom;
-    	endPointer.y /= zoom;
     	if(!_isDrawRect && (this.map.hoverCursor == 'zoom-in' || this.map.hoverCursor == 'zoom-out')){
+    		endPointer.x /= zoom;
+        	endPointer.y /= zoom;
     		var delta = this.map.hoverCursor == 'zoom-in'?0.2:-0.2;
     		this._zoom(delta,opt.e.offsetX,opt.e.offsetY);
     		opt.e.preventDefault();
      		opt.e.stopPropagation();
+    	}else if(_isDrawRect && this.map.hoverCursor == 'default'){
+    		if(this.isObjectMoved || this.isObjectScaled){
+    			this.isObjectMoved = false;
+    			this.isObjectScaled = false;
+    			return;
+    		}
+    		var left = Math.min(this.map.startPointer.x,opt.pointer.x)/zoom;
+			var bottom = Math.max(this.map.startPointer.y,opt.pointer.y)/zoom;
+			var right = Math.max(this.map.startPointer.x,opt.pointer.x)/zoom;
+			var top = Math.min(this.map.startPointer.y,opt.pointer.y)/zoom;
+    		for(var i = 0; i < this.map.pads.length; i++){
+				if(this.map.pads[i].padType != this.pad.curType)
+					continue;
+				this.map.pads[i].selected = this.map.pads[i].withinRect(left,right,top,bottom);	
+			}
+			this.map.discardActiveObject();
+			this.updateForSelect();
+			if(this.hawkmap){
+				this.hawkmap._updateForMode();
+			}
     	}
-    	this.map._isMousedown = false;
     },
   
      _drawPad:function(){ 

@@ -52,6 +52,7 @@ var Glassmap = Widget.extend(ControlPanelMixin,{
     		
     		img.set({left: 0,top: 0,hasControls:false,lockMovementX:true,lockMovementY:true,selectable:false });
     		self.map  = new fabric.Canvas('map',{hoverCursor:'default',stopContextMenu:true});
+    		self.map.pads = new Array();
     		var zoom = Math.max(self.map.getWidth()/img.width,self.map.getHeight()/img.height);
     		zoom = Math.floor(zoom*10)/10;
     		self.minZoom = zoom;
@@ -71,6 +72,22 @@ var Glassmap = Widget.extend(ControlPanelMixin,{
     		self._loadPad();
     	});
     },
+    
+    destroy: function(){	
+    	if(this.map){
+    		while(this.map.pads.length){
+    			var pad = this.map.pads.pop()
+    			pad.clear();
+    			delete pad.points;
+    		}
+
+    		this.map.clear();
+    		delete this.image;
+    		delete this.map;
+    	}
+    	this._super.apply(this, arguments);
+    },
+
 
     do_show: function () {
         this._super.apply(this, arguments);
@@ -231,8 +248,9 @@ var Glassmap = Widget.extend(ControlPanelMixin,{
      				var ux = p.ux + panel_center_x - parseFloat(self.padConf[panelName].panel_center_x);
      				var uy = p.uy + panel_center_y - parseFloat(self.padConf[panelName].panel_center_y);
      				let {dOutputX:x, dOutputY:y} = self.coordinate.UMCoordinateToGlassMapCoordinate(ux,uy)
-     				obj.addPoint({x,y:self.image.height-y});
+     				obj.points.push({x,y:self.image.height-y});
      			})
+     			obj.update();
     		});
 
     		id++;

@@ -71,7 +71,6 @@
     		</div>
 			<div class="btn-group btn-group-sm"  role="group">
         		<button class="btn btn-default fa fa-cut o_hidden" title="Delete Point" data-mode="cut"/>
-        		<button class="btn btn-default fa fa-align-justify  o_hidden" title="GOA" data-mode="GOA"/>
 			</div>
   			<a class="close" data-dismiss="alert" href="#" aria-hidden="true">x</a>
   		</div>
