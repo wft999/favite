@@ -982,34 +982,18 @@ var Hawkmap = Widget.extend({
 		var d = new Date();
 		if(pad.padType == 'mainMark'){
 			if(this.pad.isMainMarkModified){
-				//this.parent.notification_manager.notify(_t('Mark has been modified'),_t('Please save first!'),false);
+				this.parent.notification_manager.notify(_t('Mark has been modified'),_t('Please save first!'),false);
 			}else{
 				if(this.parent.mainMarkImage){
 					this._showMark(this.parent.mainMarkImage,pad)
-				}else{
-					var src = '/glassdata/'+ self.parent.glassName +'/'+ self.parent.panelName +'/mainMark.bmp'+'?t='+ d.getTime();
-					fabric.Image.fromURL(src, function(img) {
-						self.parent.mainMarkImage = img;
-						self.parent.mainMarkImage.originX = 'left';
-						self.parent.mainMarkImage.originY = 'top';
-						self._showMark(self.parent.mainMarkImage,pad)
-					});
 				}
 			}
 		}else if(pad.padType == 'subMark'){
 			if(this.pad.isSubMarkModified){
 				this.parent.notification_manager.notify(_t('Mark has been modified'),_t('Please save first!'),false);
 			}else{
-				if(this.subMarkImage){
+				if(this.parent.subMarkImage){
 					this._showMark(this.parent.subMarkImage,pad)
-				}else{
-					var src = '/glassdata/'+ self.parent.glassName +'/'+ self.parent.panelName +'/subMark.bmp'+'?t='+ d.getTime();
-					fabric.Image.fromURL(src, function(img) {
-						self.parent.subMarkImage = img;
-						self.parent.subMarkImage.originX = 'left';
-						self.parent.subMarkImage.originY = 'top';
-						self._showMark(self.parent.subMarkImage,pad)
-					});
 				}
 			}
 		}else{

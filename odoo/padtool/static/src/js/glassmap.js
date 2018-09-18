@@ -18,8 +18,9 @@ var Glassmap = Widget.extend(ControlPanelMixin,{
 */
     init: function(parent,action){
     	this.action_manager = parent;
-    	if(action && action.menu_id){
-    		this.menu_id = action.menu_id;
+    	if(action){
+    		this.menu_id = action.context.params.menu_id;
+    		this.active_id = action.context.active_id;
     	}else{
     		var queryString = document.location.hash.slice(1);
         	var params = this._parseQueryString(queryString);
@@ -74,6 +75,10 @@ var Glassmap = Widget.extend(ControlPanelMixin,{
     },
     
     destroy: function(){	
+    	this.map.off('mouse:move');    		
+    	this.map.off('mouse:out');  
+    	this.map.off('mouse:up');
+    	this.map.off('mouse:down');
     	if(this.map){
     		while(this.map.pads.length){
     			var pad = this.map.pads.pop()
@@ -259,28 +264,33 @@ var Glassmap = Widget.extend(ControlPanelMixin,{
  	
  
  	_loadPad: function(){
- 		var self = this;
-
  		var pos = this.cameraConf.general.glass_center.split(',');
 		this.glass_center_x = parseFloat(pos[0]);
 		this.glass_center_y = parseFloat(pos[1]);
 		this.glass_angle = parseFloat(this.cameraConf.general.angle);
- 		
-		var panelNames = _.keys(this.padConf);
-    	panelNames = _.filter(panelNames,function(name){
-    		return self.padConf[name].panel_map != undefined;
-    	});
-    	
-    	_.each(panelNames,function(panelName){
-    		var url = '/glassdata/'+self.glassName +'/'+ panelName +'/'+ panelName+'.json';
-    		var def = $.ajax(url, {dataType: "json",cache:false})
-         	.done(function(json_data){
-         		self._drawPad(panelName,json_data);
-         	})
-         	
-    	})
-    	
-    	
+		
+ 		var self = this;
+ 		this._rpc({
+            model: 'padtool.pad',
+            method: 'read',
+            args: [this.active_id, ['content','glassName','panelName']]
+        })
+        .then(function (data) {
+        	if(data.length && data[0].content){
+        		var json_data = JSON.parse(data[0].content);
+
+        		var panelNames = _.keys(self.padConf);
+            	panelNames = _.filter(panelNames,function(name){
+            		return self.padConf[name].panel_map != undefined;
+            	});
+            	
+            	_.each(panelNames,function(panelName){
+            		if(panelName == data[0].panelName){
+            			self._drawPad(panelName,json_data);
+            		}
+            	})
+        	}
+        });
      },
 
 });

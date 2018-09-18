@@ -2,6 +2,7 @@
     <template id="assets_backend" name="account assets" inherit_id="web.assets_backend">
         <xpath expr="." position="inside">
         	<link rel="stylesheet" type="text/css" href="/padtool/static/src/css/padtool.css"/>
+        	<link rel="stylesheet" href="/padtool/static/src/less/pad_dashboard.less"/>
         	
         	<script type="text/javascript" src="/padtool/static/lib/fabric/fabric.js"></script>
 

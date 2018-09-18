@@ -192,6 +192,10 @@ InstType $(Profile_AllInOne)
 InstType $(Profile_Server)
 
 Section $(TITLE_OpenERP_Server) SectionOpenERP_Server
+	nsExec::Exec "net stop ${SERVICENAME}"
+    nsExec::Exec "sc delete ${SERVICENAME}"
+    sleep 2
+    
     SectionIn 1 2
 
     # TODO: install in a temp dir before
@@ -262,6 +266,8 @@ Section $(TITLE_OpenERP_Server) SectionOpenERP_Server
     WriteIniStr "$INSTDIR\server\odoo.conf" "options" "db_user" $TextPostgreSQLUsername
     WriteIniStr "$INSTDIR\server\odoo.conf" "options" "db_password" $TextPostgreSQLPassword
     WriteIniStr "$INSTDIR\server\odoo.conf" "options" "db_port" $TextPostgreSQLPort
+    WriteIniStr "$INSTDIR\server\odoo.conf" "options" "db_name" "favite"
+    
     # Fix the addons path
     WriteIniStr "$INSTDIR\server\odoo.conf" "options" "addons_path" "$INSTDIR\server\odoo\addons"
     WriteIniStr "$INSTDIR\server\odoo.conf" "options" "bin_path" "$INSTDIR\thirdparty"
@@ -270,7 +276,7 @@ Section $(TITLE_OpenERP_Server) SectionOpenERP_Server
     WriteIniStr "$INSTDIR\server\odoo.conf" "options" "data_dir" "$INSTDIR\appdata"
     
 	WriteIniStr "$INSTDIR\server\odoo.conf" "options" "glass_root_path" "$TextGlassDataPath"
-	#WriteIniStr "$INSTDIR\server\odoo.conf" "options" "list_db" "False"
+	WriteIniStr "$INSTDIR\server\odoo.conf" "options" "list_db" "False"
 
     # if we're going to install postgresql force it's path,
     # otherwise we consider it's always done and/or correctly tune by users
@@ -280,7 +286,7 @@ Section $(TITLE_OpenERP_Server) SectionOpenERP_Server
     
 
     DetailPrint "Installing Windows service"
-    nsExec::ExecTOLog '"$INSTDIR\python\python.exe" "$INSTDIR\server\odoo-bin" --stop-after-init --logfile "$INSTDIR\server\odoo.log" -s'
+    
     ${If} ${RunningX64}
       nsExec::ExecToLog '"$INSTDIR\nssm\win64\nssm.exe" install ${SERVICENAME} "$INSTDIR\python\python.exe" "\"$INSTDIR\server\odoo-bin\""'
       nsExec::ExecToLog '"$INSTDIR\nssm\win64\nssm.exe" set ${SERVICENAME} AppDirectory "$\"$INSTDIR\server$\""'
@@ -288,12 +294,6 @@ Section $(TITLE_OpenERP_Server) SectionOpenERP_Server
       nsExec::ExecToLog '"$INSTDIR\nssm\win32\nssm.exe" install ${SERVICENAME} "$INSTDIR\python\python.exe" "\"$INSTDIR\server\odoo-bin\""'
       nsExec::ExecToLog '"$INSTDIR\nssm\win32\nssm.exe" set ${SERVICENAME} AppDirectory "$\"$INSTDIR\server$\""'
     ${EndIf}
-    
-    nsExec::Exec "net stop ${SERVICENAME}"
-    sleep 2
-
-    nsExec::Exec "net start ${SERVICENAME}"
-    sleep 2
 
 SectionEnd
     
@@ -346,6 +346,12 @@ Section -Post
     WriteRegDWORD HKLM     "${UNINSTALL_REGISTRY_KEY}" "NoModify" "1"
     WriteRegDWORD HKLM     "${UNINSTALL_REGISTRY_KEY}" "NoRepair" "1"
     WriteUninstaller "$INSTDIR\Uninstall.exe"
+    
+    nsExec::ExecTOLog '"$INSTDIR\python\python.exe" "$INSTDIR\server\odoo-bin" --stop-after-init --logfile "$INSTDIR\server\odoo.log" -s'
+    nsExec::Exec "net stop ${SERVICENAME}"
+    sleep 2
+    nsExec::Exec "net start ${SERVICENAME}"
+    sleep 2
 SectionEnd
 
 !insertmacro MUI_FUNCTION_DESCRIPTION_BEGIN

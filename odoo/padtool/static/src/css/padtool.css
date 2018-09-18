@@ -42,3 +42,9 @@
 .o_web_client > .o_main .o_sub_menu .o_sub_menu_content .oe_secondary_submenu {
     line-height: normal;
 }
+.o_kanban_view.o_kanban_dashboard .o_kanban_record.o_has_icon .o_primary{
+	padding-left: 0;
+}
+.pad_publish_form  .o_field_widget.o_field_many2manytags > .badge > .o_badge_text{
+	max-width:100%;
+}

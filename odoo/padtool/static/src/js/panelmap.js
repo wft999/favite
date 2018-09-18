@@ -67,6 +67,18 @@ var Panelmap = Map.extend(ControlPanelMixin,{
     	});
     },
     
+    deleteMap:function(){
+    	while(this.map.pads.length){
+			var pad = this.map.pads.pop();
+			pad.clear();
+			delete pad.points;
+		}
+
+    	this.map.clear();
+		delete this.image;
+		delete this.map;	
+    },
+    
     destroy: function(){	
     	if(this.pad.isModified){
     		var self = this;
@@ -74,33 +86,20 @@ var Panelmap = Map.extend(ControlPanelMixin,{
     		Dialog.confirm(this, (_t("The current pad was modified. Save changes?")), {
                 confirm_callback: function () {
                     self._onButtonSave().then(function(){
-                    	while(self.map.pads.length){
-                			var pad = self.map.pads.pop();
-                			pad.clear();
-                			delete pad.points;
-                		}
-
-                    	self.map.clear();
-                		delete self.image;
-                		delete self.map;	
-
-                        su.apply(self, arguments);
+                    	self.deleteMap.call(self);
+                    	su.apply(self, arguments);
                     });
                 },
+                cancel_callback:function(){
+                	self.deleteMap.call(self);
+                	su.apply(self, arguments);
+                }
             });
     	}else{
-    		if(this.map){
-        		while(this.map.pads.length){
-        			var pad = this.map.pads.pop()
-        			pad.clear();
-        			delete pad.points;
-        		}
-
-        		this.map.clear();
-        		delete this.image;
-        		delete this.map;
-        	}
     		this._super.apply(this, arguments);
+    		if(this.map){
+        		this.deleteMap();
+        	}
     	}
     	
     	this.hawkmap&&this.hawkmap.destroy();
@@ -237,8 +236,8 @@ var Panelmap = Map.extend(ControlPanelMixin,{
     		var addOrRemove  = li === e.currentTarget;
             $(li).toggleClass('selected',addOrRemove);
             if(addOrRemove){
-            	if($('.breadcrumb')[0].children[1])
-            		$('.breadcrumb')[0].removeChild($('.breadcrumb')[0].children[1]);
+            	if($('.breadcrumb')[0].children[2])
+            		$('.breadcrumb')[0].removeChild($('.breadcrumb')[0].children[2]);
             	$('.breadcrumb').append('<li>'+self.pad.curType+'</li>')
             }
         });
@@ -269,6 +268,30 @@ var Panelmap = Map.extend(ControlPanelMixin,{
     	e.preventDefault();
 		e.stopPropagation();
 
+    },
+    
+    _getMarkImage:function(data){
+    	var self = this;
+    	var d = new Date();
+    	if(data.length && data[0].mainMark_attachment_id){
+    		var src = '/web/content/'+ data[0].mainMark_attachment_id[0]+'?t='+ d.getTime();
+    		fabric.Image.fromURL(src, function(img) {
+    			self.mainMarkImage = img;
+    			self.mainMarkImage.originX = 'left';
+    			self.mainMarkImage.originY = 'top';
+    		});
+    		
+    	}
+		
+    	if(data.length && data[0].subMark_attachment_id){
+    		var src = '/web/content/'+ data[0].subMark_attachment_id[0]+'?t='+ d.getTime();
+    		fabric.Image.fromURL(src, function(img) {
+    			self.subMarkImage = img;
+    			self.subMarkImage.originX = 'left';
+    			self.subMarkImage.originY = 'top';
+    		});
+    	}
+		
     },
     
     _onButtonSave:function(){
@@ -321,26 +344,21 @@ var Panelmap = Map.extend(ControlPanelMixin,{
     	});
     	//pad.pMarkRegionArray = this.pMarkRegionArray;
     	
-    	return this._rpc({model: 'padtool.pad',method: 'save_pad',args: [this.glassName,this.panelName,pad],}).then(function(){
+    	return this._rpc({model: 'padtool.pad',method: 'write',args: [this.active_id,{content:JSON.stringify(pad)}],}).then(function(values){
     		self.notification_manager.notify(_t('Operation Result'),_t('Pad was succesfully saved!'),false);
     		self.pad.isModified = false;
     		self.pad.isSubMarkModified = false;
     		self.pad.isMainMarkModified = false;
+ 
+        	self._rpc({
+                model: 'padtool.pad',
+                method: 'read',
+                args: [self.active_id, ['mainMark_attachment_id','subMark_attachment_id']]
+            })
+            .then(function (data) {
+            	self._getMarkImage(data);
+            });
     		
-    		var d = new Date();
-			var src = '/glassdata/'+ self.glassName +'/'+ self.panelName +'/mainMark.bmp'+'?t='+ d.getTime();
-			fabric.Image.fromURL(src, function(img) {
-				self.mainMarkImage = img;
-				self.mainMarkImage.originX = 'left';
-				self.mainMarkImage.originY = 'top';
-			});
-			
-			src = '/glassdata/'+ self.glassName +'/'+ self.panelName +'/subMark.bmp'+'?t='+ d.getTime();
-			fabric.Image.fromURL(src, function(img) {
-				self.subMarkImage = img;
-				self.subMarkImage.originX = 'left';
-				self.subMarkImage.originY = 'top';
-			});
         });
     },
     
@@ -410,17 +428,24 @@ var Panelmap = Map.extend(ControlPanelMixin,{
  		this.glass_center_y = parseFloat(pos[1]);
  		this.glass_angle = parseFloat(this.cameraConf.general.angle);
  		
-    	var self = this;
-    	var url = '/glassdata/'+this.glassName +'/'+ this.panelName +'/'+ this.panelName+'.json';
-
-    	var def2 = $.ajax(url, {dataType: "json",cache:false})
-         	.done(function(json_data){
-         		self.jsonpad = json_data;
-         	})
-         	.fail(function(){
-         		self.jsonpad = new Array();
-         	})
-         	.always(self._drawPad.bind(this));
+ 		var self = this;
+ 		this._rpc({
+            model: 'padtool.pad',
+            method: 'read',
+            args: [this.active_id, ['content','mainMark_attachment_id','subMark_attachment_id']]
+        })
+        .then(function (data) {
+        	if(data.length && data[0].content){
+        		self._getMarkImage(data);
+        		self.jsonpad = JSON.parse(data[0].content);
+        	}
+        	else
+        		self.jsonpad = new Array();
+        	self._drawPad();
+        },function(){
+        	self.jsonpad = new Array();
+        	self._drawPad();
+        });
      },
 });
 

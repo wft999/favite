@@ -64,27 +64,26 @@ class Http(models.AbstractModel):
                                     contonue
                                 gmenu = Menu.sudo().search([('name', '=', dir),('parent_id', '=', self.env.ref('padtool.menu_glass_root').id),], limit=1)
                                 if(not gmenu.id):
-                                    gmenu = Menu.sudo().create({'name': dir, 'parent_id': self.env.ref('padtool.menu_glass_root').id})
-                                    action = 'ir.actions.client,%s' % self.env.ref('padtool.action_glassmap').id
-                                    Menu.sudo().create({'name': 'GlassMap', 'parent_id': gmenu.id,'action':action})
+                                    gmenu = Menu.sudo().create({'name': dir, 'parent_id': self.env.ref('padtool.menu_glass_root').id,'groups_id':[(6, 0, [self.env.ref('padtool.group_pad_user').id])]})
+                                    #action = 'ir.actions.client,%s' % self.env.ref('padtool.action_glassmap').id
+                                    #Menu.sudo().create({'name': 'GlassMap', 'parent_id': gmenu.id,'action':action})
 
                                 glass[dir] = {'id':gmenu.id,'panel':[]}
                             continue
-                        elif sec == 'GLASS_INFORMATION':
-                            pass      
                         else:
                             pname = sec
                             if name == 'panel_map' and os.path.isfile(root + '/' + dir+'/'+pname+'/'+value):
                                 parent = glass[dir]['id']
                                 pmenu = Menu.sudo().search([('name', '=', pname),('parent_id', '=', parent)], limit=1)
                                 if(not pmenu.id):
-                                    pmenu = Menu.sudo().create({'name': pname, 'parent_id': parent})
+                                    action = 'ir.actions.server,%s' % self.env.ref('padtool.ir_actions_server_pad').id
+                                    pmenu = Menu.sudo().create({'name': pname, 'parent_id': parent,'action':action,'groups_id':[(6, 0, [self.env.ref('padtool.group_pad_user').id])]})
                                     
-                                    action = 'ir.actions.act_window,%s' % self.env.ref('padtool.action_pad_parameter_window').id
-                                    Menu.sudo().create({'name': 'Parameter', 'parent_id': pmenu.id,'action':action})
+                                    #action = 'ir.actions.act_window,%s' % self.env.ref('padtool.action_pad_parameter_window').id
+                                    #Menu.sudo().create({'name': 'Parameter', 'parent_id': pmenu.id,'action':action})
                             
-                                    action = 'ir.actions.client,%s' % self.env.ref('padtool.action_panelmap').id
-                                    Menu.sudo().create({'name': 'PanelMap', 'parent_id': pmenu.id,'action':action})
+                                    #action = 'ir.actions.client,%s' % self.env.ref('padtool.action_panelmap').id
+                                    #Menu.sudo().create({'name': 'PanelMap', 'parent_id': pmenu.id,'action':action})
 
                                 glass[dir]['panel'].append(pname)    
                         

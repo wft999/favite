@@ -67,7 +67,7 @@
     	</record>
 
         <menuitem id="padtool.menu_setting" name="Configuration" parent="padtool.menu_root"
-            sequence="100" groups="group_pad_manager"/>
+            sequence="101" groups="group_pad_manager"/>
         <menuitem id="menu_stock_general_settings" name="Settings" parent="padtool.menu_setting"
             sequence="0" action="action_pad_config_settings" groups="group_pad_manager"/>
     </data>

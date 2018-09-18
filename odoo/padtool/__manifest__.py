@@ -17,19 +17,20 @@
     # Check https://github.com/odoo/odoo/blob/master/odoo/addons/base/module/module_data.xml
     # for the full list
     'category': 'Favite Tools',
-    'version': '2.4',
+    'version': '2.5',
 
     # any module necessary for this one to work correctly
     'depends': ['web'],
 
     # always loaded
     'data': [
-        # 'security/ir.model.access.csv',
+        'security/ir.model.access.csv',
         'data/favite_data.xml',
-        'views/views.xml',
         'views/templates.xml',
         'security/pad_security.xml',
+        'views/views.xml',
         'views/res_config_settings_views.xml',
+        'wizard/pad_publish_wizard_views.xml',
     ],
     # only loaded in demonstration mode
     'demo': [
