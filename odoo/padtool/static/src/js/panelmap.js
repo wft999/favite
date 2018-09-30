@@ -39,14 +39,18 @@ var Panelmap = Map.extend(ControlPanelMixin,{
         var self = this;
         return this._rpc({model: 'padtool.pad',method: 'panel_information',args: [this.menu_id],})
             .then(function(res) {
-            	_.extend(self,res);
-            	self.coordinate = new Coordinate(res.cameraConf,res.bifConf,res.padConf,res.panelName);
-            	self.tmpCoordinate = new Coordinate(res.cameraConf,res.bifConf,res.padConf,res.panelName);
+            	if(res !== undefined){
+            		_.extend(self,res);
+                	self.coordinate = new Coordinate(res.cameraConf,res.bifConf,res.padConf,res.panelName);
+                	self.tmpCoordinate = new Coordinate(res.cameraConf,res.bifConf,res.padConf,res.panelName);
+            	}	
             });
     },
     
     start: function(){
     	this._super.apply(this, arguments);
+    	if(this.panelName === undefined)
+    		return;
 
     	this.notification_manager = new NotificationManager(this);
         this.notification_manager.appendTo(this.$el);
@@ -86,7 +90,7 @@ var Panelmap = Map.extend(ControlPanelMixin,{
     		Dialog.confirm(this, (_t("The current pad was modified. Save changes?")), {
                 confirm_callback: function () {
                     self._onButtonSave().then(function(){
-                    	self.deleteMap.call(self);
+                    	self.map && self.deleteMap.call(self);
                     	su.apply(self, arguments);
                     });
                 },
@@ -176,8 +180,8 @@ var Panelmap = Map.extend(ControlPanelMixin,{
     	this.hawkeye = new Mycanvas.Hawkeye({ 
  			left: this.image.width/2, 
  			top: this.image.height/2,
- 			width:300,
- 			height:300,
+ 			width:100,
+ 			height:100,
  			});
     	this.map.add(this.hawkeye);
     	this.hawkeye.bringToFront();
@@ -193,6 +197,7 @@ var Panelmap = Map.extend(ControlPanelMixin,{
     	if(this.map.hoverCursor == 'default'){
     		this.map.discardActiveObject();
     	}
+    	this.map.forEachObject(this.showObj.bind(this));
     	this.map.requestRenderAll();
     	this._showToolbar();
     },
@@ -213,8 +218,9 @@ var Panelmap = Map.extend(ControlPanelMixin,{
     showObj:function(obj){
 		if(obj.pad){
 			obj.visible = obj.pad.padType == this.pad.curType || (obj.pad.padType == 'region' && this.pad.curType == 'frame');
-			if(obj.type == 'cross')
-				obj.visible = false;
+			if(obj.type == 'cross'){
+				obj.visible = this.pad.curType == 'frame' && obj.pad.padType == 'frame' && this.map.hoverCursor == 'default';
+			}
 		}
 		
 	},

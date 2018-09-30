@@ -37,6 +37,8 @@ var Map = Widget.extend({
     start: function(){
     	var self = this;
     	this._super.apply(this, arguments);
+    	if(this.panelName === undefined)
+    		return;
     	
     	this.defImage = new $.Deferred();
     	this.image = new fabric.Image();
@@ -57,7 +59,8 @@ var Map = Widget.extend({
     		self.map.setDimensions({width:img.width*zoom,height:img.height*zoom});
     		self.map.add(img);
 
-    		self.map.on('mouse:move',_.debounce(self._onMouseMove.bind(self), 100));    		
+    		//self.map.on('mouse:move',_.debounce(self._onMouseMove.bind(self), 100));
+    		self.map.on('mouse:move',self._onMouseMove.bind(self)); 
     		self.map.on('mouse:out', self._onMouseOut.bind(self)); 
     		self.map.on('mouse:up', self._onMouseUp.bind(self));
     		self.map.on('mouse:down',self._onMouseDown.bind(self));
@@ -99,16 +102,7 @@ var Map = Widget.extend({
     	
     },
     
-    destroy: function(){	
-    	this.map.off('mouse:move');    		
-    	this.map.off('mouse:out'); 
-    	this.map.off('mouse:up');
-    	this.map.off('mouse:down');
-    	this.map.off('mouse:dblclick');
-
-    	this.map.off('object:moved');
-    	this.map.off('object:scaled');
-		
+    destroy: function(){			
 		$('body').off('keyup', this.keyupHandler);
     	$('body').off('keydown', this.keydownHandler);
     	
@@ -196,6 +190,22 @@ var Map = Widget.extend({
     	 if(opt.target.type == "hawkeye"){
      		this.hawkmap.showImage();
      		this.isObjectMoved = true;
+     	}else if(opt.target.type == "cross"){
+     		this.isObjectMoved = true;
+     		if(opt.target.mouseMove()){
+     			opt.target.pad.points[opt.target.id].x = opt.target.left;
+     			opt.target.pad.points[opt.target.id].y = opt.target.top;
+    
+     			let {dOutputX:ux, dOutputY:uy} = this.coordinate.PanelMapCoordinateToUMCoordinate(opt.target.left,this.image.height-opt.target.top);
+     			opt.target.pad.points[opt.target.id].ux = ux;
+				opt.target.pad.points[opt.target.id].uy = uy;
+
+				this._drawRegion();
+				
+				if(this.hawkmap){
+					this.hawkmap.drawPad();
+				}
+     		}
      	}
      },
      
@@ -203,13 +213,16 @@ var Map = Widget.extend({
     	this.map.startPointer = opt.pointer;
     },
 	_onMouseMove:function(opt){
-		var zoom = this.map.getZoom();
-		var x = opt.e.offsetX;
-		var y = opt.e.offsetY;
-		
-		let {dOutputX:ux, dOutputY:uy} = this.coordinate.PanelMapCoordinateToUMCoordinate(x/zoom,this.image.height- y/zoom);
+		if(this.map){
+			var zoom = this.map.getZoom();
+			var x = opt.e.offsetX;
+			var y = opt.e.offsetY;
+			
+			let {dOutputX:ux, dOutputY:uy} = this.coordinate.PanelMapCoordinateToUMCoordinate(x/zoom,this.image.height- y/zoom);
 
-		$(".map-info").text('image(x:'+Math.round(x/zoom)+',y:'+Math.round(y/zoom)+') window(x:'+x+',y:'+y+') um(x:'+ux+',y:'+uy+')');
+			$(".map-info").text('image(x:'+Math.round(x/zoom)+',y:'+Math.round(y/zoom)+') window(x:'+x+',y:'+y+') um(x:'+ux+',y:'+uy+')');
+		}
+		
 		
     	opt.e.stopPropagation();
         opt.e.preventDefault();	
@@ -249,8 +262,9 @@ var Map = Widget.extend({
  		
     	 x = x1 * zoom - (x - div.scrollLeft());
     	 y = y1 * zoom - (y - div.scrollTop());
-    	 this.map.setZoom(zoom);
+    	 
     	 this.map.setDimensions({width:this.image.width*zoom,height:this.image.height*zoom});
+    	 this.map.setZoom(zoom);
 
     	 div.scrollTop(y);
     	 div.scrollLeft(x);
@@ -294,12 +308,15 @@ var Map = Widget.extend({
     		this._zoom(delta,opt.e.offsetX,opt.e.offsetY);
     		opt.e.preventDefault();
      		opt.e.stopPropagation();
-    	}else if(_isDrawRect && this.map.hoverCursor == 'default'){
+    	}else if(this.map.hoverCursor == 'default'){
     		if(this.isObjectMoved || this.isObjectScaled){
     			this.isObjectMoved = false;
     			this.isObjectScaled = false;
     			return;
     		}
+    		
+    		var x = opt.pointer.x/zoom;
+			var y = opt.pointer.y/zoom;
     		var left = Math.min(this.map.startPointer.x,opt.pointer.x)/zoom;
 			var bottom = Math.max(this.map.startPointer.y,opt.pointer.y)/zoom;
 			var right = Math.max(this.map.startPointer.x,opt.pointer.x)/zoom;
@@ -307,9 +324,20 @@ var Map = Widget.extend({
     		for(var i = 0; i < this.map.pads.length; i++){
 				if(this.map.pads[i].padType != this.pad.curType)
 					continue;
-				this.map.pads[i].selected = this.map.pads[i].withinRect(left,right,top,bottom);	
+				if(_isDrawRect){
+					this.map.pads[i].selected = this.map.pads[i].withinRect(left,right,top,bottom);
+				}else{
+					if(opt.e.ctrlKey){
+						if(this.map.pads[i].containsPoint({x,y})){
+							this.map.pads[i].selected = !this.map.pads[i].selected;
+						}
+					}else{
+						this.map.pads[i].selected = false;
+					}
+				}	
 			}
-			this.map.discardActiveObject();
+    		
+			//this.map.discardActiveObject();
 			this.updateForSelect();
 			if(this.hawkmap){
 				this.hawkmap._updateForMode();
@@ -359,6 +387,12 @@ var Map = Widget.extend({
  		this.innerFrame.crosses[1].bringToFront();
  		this.outerFrame.crosses[0].bringToFront();
  		this.outerFrame.crosses[1].bringToFront();
+ 		
+ 		this.innerFrame.crosses[0].outer = [this.outerFrame.crosses[0],this.outerFrame.crosses[1]];
+ 		this.innerFrame.crosses[1].outer = [this.outerFrame.crosses[0],this.outerFrame.crosses[1]];
+ 		
+ 		this.outerFrame.crosses[0].inner = [this.innerFrame.crosses[0],this.innerFrame.crosses[1]];
+ 		this.outerFrame.crosses[1].inner = [this.innerFrame.crosses[0],this.innerFrame.crosses[1]];
 
     	this.map.forEachObject(this.showObj.bind(this));
 
@@ -582,14 +616,14 @@ var Map = Widget.extend({
 				if(pad.selected){
 					pad.lines.forEach(function(line){line.dirty=true;line.stroke = 'red';line.fill='red'});
 					if(first){
-						if(pad.crosses[0])
-							pad.crosses[0].visible = true;
+						//if(pad.crosses[0])
+							//pad.crosses[0].visible = true;
 						first = false;
 					}
 				}else{
 					pad.lines.forEach(function(line){line.dirty=true;line.stroke = 'yellow';line.fill='yellow'});
-					if(pad.crosses[0])
-						pad.crosses[0].visible = false;
+					//if(pad.crosses[0])
+						//pad.crosses[0].visible = false;
 				}
 			}
 		});

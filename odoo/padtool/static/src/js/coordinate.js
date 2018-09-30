@@ -1033,8 +1033,8 @@ var COORDINATE_TRANSFER =  Class.extend({
     	
     	if(iIPIndex_Top == undefined || iScanIndex_Top == undefined)
     	{
-    		iIPIndex_Top = -1;
-    		iScanIndex_Top = -1;
+    		iIPIndex_Bottom = -1;
+    		iScanIndex_Bottom = -1;
     		iIPIndex_Top = -1;
     		iScanIndex_Top = -1;
     	}
@@ -1049,7 +1049,7 @@ var COORDINATE_TRANSFER =  Class.extend({
     		dResolutionY = this.mpMachinePara.aIPParaArray[iIPIndex_Bottom].aScanParaArray[iScanIndex_Bottom].dResolutionY;
 
     		dSearchMarkHeight = SEARCH_SUBMARK_HEIGHT * dResolutionY;
-    		iCount = Math.floor((dScanRangeTop - dPanelBottom) / dSearchMarkHeight);
+    		iCount = Math.ceil((dScanRangeTop - dPanelBottom) / dSearchMarkHeight);
 
     		for(var i = 0; i < iCount; i ++)
     		{
@@ -1103,7 +1103,7 @@ var COORDINATE_TRANSFER =  Class.extend({
     		dResolutionY = this.mpMachinePara.aIPParaArray[iIPIndex_Top].aScanParaArray[iScanIndex_Top].dResolutionY;
 
     		dSearchMarkHeight = SEARCH_SUBMARK_HEIGHT * dResolutionY;
-    		iCount = Math.floor((dPanelTop - dScanRangeBottom) / dSearchMarkHeight);
+    		iCount = Math.ceil((dPanelTop - dScanRangeBottom) / dSearchMarkHeight);
 
     		for(var i = 0; i < iCount; i ++)
     		{
@@ -1157,7 +1157,7 @@ var COORDINATE_TRANSFER =  Class.extend({
     		dResolutionY = this.mpMachinePara.aIPParaArray[iIPIndex_Bottom].aScanParaArray[iScanIndex_Bottom].dResolutionY;
     		
     		dSearchMarkHeight = SEARCH_SUBMARK_HEIGHT * dResolutionY;
-    		iCount = Math.floor((dPanelTop - dPanelBottom) / dSearchMarkHeight);
+    		iCount = Math.ceil((dPanelTop - dPanelBottom) / dSearchMarkHeight);
     		
     		for(var i = 0; i < iCount; i ++)
     		{
@@ -1241,7 +1241,7 @@ var COORDINATE_TRANSFER =  Class.extend({
     		dResolutionY = this.mpMachinePara.aIPParaArray[iIPIndex_Bottom].aScanParaArray[iScanIndex_Bottom].dResolutionY;
 
     		dSearchMarkHeight = SEARCH_SUBMARK_HEIGHT * dResolutionY;
-    		iCount = Math.floor((dScanRangeTop - dPanelBottom) / dSearchMarkHeight);
+    		iCount = Math.ceil((dScanRangeTop - dPanelBottom) / dSearchMarkHeight);
 
     		for(var i = 0; i < iCount; i ++)
     		{
@@ -1295,7 +1295,7 @@ var COORDINATE_TRANSFER =  Class.extend({
     		dResolutionY = this.mpMachinePara.aIPParaArray[iIPIndex_Top].aScanParaArray[iScanIndex_Top].dResolutionY;
 
     		dSearchMarkHeight = SEARCH_SUBMARK_HEIGHT * dResolutionY;
-    		iCount = Math.floor((dPanelTop - dScanRangeBottom) / dSearchMarkHeight);
+    		iCount = Math.ceil((dPanelTop - dScanRangeBottom) / dSearchMarkHeight);
 
     		for(var i = 0; i < iCount; i ++)
     		{
@@ -1349,7 +1349,7 @@ var COORDINATE_TRANSFER =  Class.extend({
     		dResolutionY = this.mpMachinePara.aIPParaArray[iIPIndex_Bottom].aScanParaArray[iScanIndex_Bottom].dResolutionY;
 
     		dSearchMarkHeight = SEARCH_SUBMARK_HEIGHT * dResolutionY;
-    		iCount = Math.floor((dPanelTop - dPanelBottom) / dSearchMarkHeight);
+    		iCount = Math.ceil((dPanelTop - dPanelBottom) / dSearchMarkHeight);
 
     		for(var i = 0; i < iCount; i ++)
     		{

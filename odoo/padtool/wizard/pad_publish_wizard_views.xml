@@ -13,7 +13,7 @@
                         </group>
                         <group>
                             <group>
-                            	<field name="directory_ids" widget="many2many_tags"/>
+                            	<field name="directory_ids" widget="many2many_tags" options="{'no_create': True}"/>
                             </group>
                         </group>
                         

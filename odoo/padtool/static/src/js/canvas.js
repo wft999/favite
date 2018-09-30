@@ -171,9 +171,9 @@ var Cross = fabric.util.createClass(fabric.Object, {
 	borderColor: 'red',
 	originX:"center",
 	originY:"center",
-	//hoverCursor:"move",
-	lockMovementX:true,
-	lockMovementY:true,
+	hoverCursor:"move",
+	//lockMovementX:true,
+	//lockMovementY:true,
 	visible:false,
 	stroke:"yellow",
 	objectCaching:false,
@@ -225,41 +225,23 @@ var Cross = fabric.util.createClass(fabric.Object, {
       },
       
     mouseMove: function(){
-    	var modefy;
     	if(this.inner){
-    		if(this.left>= this.inner[0].left && this.left<= this.inner[1].left){
-    			this.left = this == this.inner[0].outer[0]?(this.inner[0].left - 10):(this.inner[1].left + 10);
-    			modefy = true;
-    		}
-    		if(this.top>= this.inner[1].top && this.top<= this.inner[0].top){
-    			this.top = this == this.inner[0].outer[0]?(this.inner[0].top + 10):(this.inner[1].top - 10);
-    			modefy = true;
-    		}
-    		if(modefy){
+    		if((this.left>= this.inner[0].left && this.left<= this.inner[1].left) || (this.top>= this.inner[1].top && this.top<= this.inner[0].top)){
+    			this.left = this.pad.points[this.id].x;
+    			this.top = this.pad.points[this.id].y;
     			this.setCoords();
-    			return;
-    		}	
+    			return false;
+    		}
     	}else if(this.outer){
-    		if(this.left>= this.outer[1].left || this.left<= this.outer[0].left){
-    			this.left = this == this.outer[0].inner[0]?(this.outer[0].left + 10):(this.outer[1].left - 10);
-    			modefy = true;
-    		}
-    		if(this.top<= this.outer[1].top || this.top>= this.outer[0].top){
-    			this.top = this == this.outer[0].inner[0]?(this.outer[0].top - 10):(this.outer[1].top + 10);
-    			modefy = true;
-    		}
-    		if(modefy){
+    		if(this.left>= this.outer[1].left || this.left<= this.outer[0].left || this.top<= this.outer[1].top || this.top>= this.outer[0].top){
+    			this.left = this.pad.points[this.id].x;
+    			this.top = this.pad.points[this.id].y;
     			this.setCoords();
-    			return;
-    		}		
-    	}
-    	
-    	this.pad.points[this.id].x = this.left;
-    	this.pad.points[this.id].y = this.top;
-    	if(this.pad.polyline){
-    		this.pad.update();
+    			return false;
+    		}
     	}
 
+    	return true;
 	}
   });
 
@@ -442,11 +424,41 @@ var MyPolyline = Class.extend({
 			var bottom = Math.max(this.points[0].y,this.points[1].y);
 			//return point.x >= left && point.x <= right && point.y >= top && point.y <= bottom;
 			poly = new fabric.Polygon([{x:left,y:top},{x:right,y:top},{x:right,y:bottom},{x:left,y:bottom}]);
+			return  poly.containsPoint(point,null,true,true);
 		}else{
-			poly = new fabric.Polygon(this.points);
+			//poly = new fabric.Polygon(this.points);
+			return this.containsPolygonPoint(point);
 		}
-
-		return  poly.containsPoint(point,null,true,true);
+	},
+	
+	containsPolygonPoint:function(checkPoint){
+		var polygonPoints = this.points;
+	    var counter = 0;
+	    var i;
+	    var xinters;
+	    var p1, p2;
+	    var pointCount = polygonPoints.length;
+	    p1 = polygonPoints[0];
+	 
+	    for (i = 1; i <= pointCount; i++) {
+	        p2 = polygonPoints[i % pointCount];
+	        if (checkPoint.x > Math.min(p1.x, p2.x) &&checkPoint.x <= Math.max(p1.x, p2.x)) {
+	            if (checkPoint.y <= Math.max(p1.y, p2.y)) {
+	                if (p1.x != p2.x) {
+	                    xinters = (checkPoint.x - p1.x) * (p2.y - p1.y) / (p2.x - p1.x) + p1.y;
+	                    if (p1.y == p2.y || checkPoint.y <= xinters) {
+	                        counter++;
+	                    }
+	                }
+	            }
+	        }
+	        p1 = p2;
+	    }
+	    if (counter % 2 == 0) {
+	        return false;
+	    } else {
+	        return true;
+	    }
 	},
 	
 	_checkIntersection:function(point){
@@ -519,9 +531,9 @@ var MyPolyline = Class.extend({
 					width:wh,
 					height:wh,
 					pad:this,
-					hoverCursor:this.map.isPanel?"":"move",
-					lockMovementX:this.map.isPanel,
-					lockMovementY:this.map.isPanel,
+//					hoverCursor:this.map.isPanel?"":"move",
+//					lockMovementX:this.map.isPanel,
+//					lockMovementY:this.map.isPanel,
 					stroke:i==0?'aqua':'lime'
 					});
 				this.crosses.push(cross);

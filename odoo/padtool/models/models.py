@@ -100,7 +100,7 @@ class Pad(models.Model):
         mainMarkList = []
         subMarkList = []
         for obj in pad['objs']:
-            if obj['padType'] == 'mainMark' and pad['isMainMarkModified']:
+            if obj['padType'] == 'mainMark' and pad.get('isMainMarkModified',False):
                 height = 0     
                 block_list = []
                 iInterSectionWidth = 0
@@ -108,8 +108,6 @@ class Pad(models.Model):
                 for block in obj['blocks']:
                     if (not 'iInterSectionHeight' in block):
                         continue;
-                    if (not 'isMainMarkModified' in pad) or (not pad['isMainMarkModified']) :
-                        continue
                     if iInterSectionWidth == 0:
                         iInterSectionWidth = block['iInterSectionWidth']
                     
@@ -129,7 +127,7 @@ class Pad(models.Model):
                 mainMarkHeight = height if height > mainMarkHeight else mainMarkHeight   
                 if len(block_list):
                     mainMarkList.append(block_list)
-            elif obj['padType'] == 'subMark' and pad['isSubMarkModified']:
+            elif obj['padType'] == 'subMark' and pad.get('isSubMarkModified',False):
                 height = 0     
                 block_list = []
                 iInterSectionWidth = 0
@@ -137,8 +135,6 @@ class Pad(models.Model):
                 for block in obj['blocks']:
                     if (not 'iInterSectionHeight' in block):
                         continue;
-                    if (not 'isSubMarkModified' in pad) or (not pad['isSubMarkModified']) :
-                        continue
                     if iInterSectionWidth == 0:
                         iInterSectionWidth = block['iInterSectionWidth']
                     
@@ -340,14 +336,23 @@ class PublishDirectory(models.Model):
     _name = "padtool.directory"
     _description = "Publich directory of pad"
 
-    name = fields.Char(required=True)
+    name = fields.Char(required=True,string = "directory")
+    active = fields.Boolean(string="Active", default=True)
 
     _sql_constraints = [
         ('name_uniq', 'unique (name)', "Directory already exists !"),
     ]     
+    
+    @api.multi
+    def write(self, vals):
+        vals['name'] = os.path.normpath(vals['name'])
+        if not os.path.exists(vals['name']):
+            raise ValidationError(_('Invalid publish directory.'))
+        return super(PublishDirectory, self).write(vals)
 
     @api.model
     def create(self, vals):
+        vals['name'] = os.path.normpath(vals['name'])
         if not os.path.exists(vals['name']):
             raise ValidationError(_('Invalid publish directory.'))
 

@@ -69,6 +69,7 @@ var Hawkmap = Widget.extend({
     },
     
     showImage: function(zoom){
+    	this.map.clear();
     	var left = this.parent.hawkeye.left - this.parent.hawkeye.scaleX*this.parent.hawkeye.width/2;
     	var right = this.parent.hawkeye.left + this.parent.hawkeye.scaleX*this.parent.hawkeye.width/2;
     	var top = this.parent.hawkeye.top - this.parent.hawkeye.scaleY*this.parent.hawkeye.height/2;
@@ -166,7 +167,7 @@ var Hawkmap = Widget.extend({
 
     		var points = obj.points;
     		var pad = new Mycanvas.MyPolyline(self.map,obj.padType);
-    		pad.selected = obj.selected;
+    		//pad.selected = obj.selected;
 
     		for(var i = 0; i < points.length; i++){
     			if(points[i].ux){
@@ -401,6 +402,7 @@ var Hawkmap = Widget.extend({
 		    	
 				this.parent._drawRegion();
 				this.parent.pad.isModified = true;
+				this.parent.map.forEachObject(this.parent.showObj.bind(this.parent));
 				this.drawPad();
 			}else{
 				opt.target.left = opt.target.pad.points[opt.target.id].x;
@@ -714,15 +716,21 @@ var Hawkmap = Widget.extend({
 					var bottom = Math.max(this.map.startPointer.y,opt.pointer.y)/zoom;
 					var right = Math.max(this.map.startPointer.x,opt.pointer.x)/zoom;
 					var top = Math.min(this.map.startPointer.y,opt.pointer.y)/zoom;
-					this.map.pads[i].selected = this.map.pads[i].withinRect(left,right,top,bottom);
-					this.map.pads[i].panelpad.selected = this.map.pads[i].selected;
+					//this.map.pads[i].selected = this.map.pads[i].withinRect(left,right,top,bottom);
+					this.map.pads[i].panelpad.selected = this.map.pads[i].withinRect(left,right,top,bottom);
 				}else{
-					this.map.pads[i].selected = false;
-					this.map.pads[i].panelpad.selected = false;
-					if(this.map.pads[i].containsPoint({x,y})){
-						this.map.curPad = this.map.pads[i];
-						this._checkMark(this.map.curPad);
-						break;
+					if(opt.e.ctrlKey){
+						if(this.map.pads[i].containsPoint({x,y})){
+							//this.map.pads[i].selected = !this.map.pads[i].selected;
+							this.map.pads[i].panelpad.selected = !this.map.pads[i].panelpad.selected;
+						}
+					}else{
+						//this.map.pads[i].selected = false;
+						this.map.pads[i].panelpad.selected = false;
+						if(this.map.curPad == null && this.map.pads[i].containsPoint({x,y})){
+							this.map.curPad = this.map.pads[i];
+							this._checkMark(this.map.curPad);
+						}
 					}
 				}
 			}
@@ -795,8 +803,10 @@ var Hawkmap = Widget.extend({
 					obj.visible = (self.map.hoverCursor == 'default' && (obj.pad == self.map.curPad || obj.pad.padType == 'frame'))||
 					(self.map.hoverCursor == 'crosshair' && obj.pad == self.map.curPad);
 				}else if(obj.type === 'line'){
-					if(obj.pad.selected){
+					if(obj.pad.panelpad.selected){
 						obj.pad.lines.forEach(function(line){line.dirty=true;line.stroke = 'red';line.fill='red'})
+					}else if(obj.pad == self.map.curPad){
+						obj.pad.lines.forEach(function(line){line.dirty=true;line.stroke = 'GreenYellow';line.fill='GreenYellow'})
 					}else{
 						obj.pad.lines.forEach(function(line){line.dirty=true;line.stroke = 'yellow';line.fill='yellow'})
 					}
@@ -860,8 +870,27 @@ var Hawkmap = Widget.extend({
     	if(this.pad.curType !== 'inspectZone')
     		return;
     	
-   	 	if(opt.target.pad){
-   	 		this.map.curPad = opt.target.pad;
+    	var zoom = this.map.getZoom();
+    	var x = opt.pointer.x/zoom;
+		var y = opt.pointer.y/zoom;
+		if(this.map.curPad){
+			this.map.curPad = null;
+			if(this.markShow){
+				this.map.remove(this.markShow);
+				this.markShow = null;
+			}
+		}
+		
+		for(var i = 0; i < this.map.pads.length; i++){
+			if(this.map.pads[i].padType != this.pad.curType)
+				continue;
+			this.map.pads[i].panelpad.selected = false;
+			if(this.map.curPad == null && this.map.pads[i].containsPoint({x,y})){
+				this.map.curPad = this.map.pads[i];
+			}
+		}
+    	
+   	 	if(this.map.curPad){
    	 		this._onButtonAlign();
    	 	}
     },

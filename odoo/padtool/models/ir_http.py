@@ -42,12 +42,6 @@ class Http(models.AbstractModel):
         if not root or not os.path.isdir(root):
             return super(Http,self).webclient_rendering_context()
 
-        #root = os.path.normpath(root)
-        #if glass_root_path == '.':
-        #    glass_root_path = ''
-        #if glass_root_path.startswith('..') or (glass_root_path and glass_root_path[0] == '/'):
-        #    raise Exception('Cannot access file outside the module')
-
         glass={}
         Menu = request.env['ir.ui.menu'].with_context({'ir.ui.menu.full_list': True})
         for dir in os.listdir(root):   
@@ -65,8 +59,6 @@ class Http(models.AbstractModel):
                                 gmenu = Menu.sudo().search([('name', '=', dir),('parent_id', '=', self.env.ref('padtool.menu_glass_root').id),], limit=1)
                                 if(not gmenu.id):
                                     gmenu = Menu.sudo().create({'name': dir, 'parent_id': self.env.ref('padtool.menu_glass_root').id,'groups_id':[(6, 0, [self.env.ref('padtool.group_pad_user').id])]})
-                                    #action = 'ir.actions.client,%s' % self.env.ref('padtool.action_glassmap').id
-                                    #Menu.sudo().create({'name': 'GlassMap', 'parent_id': gmenu.id,'action':action})
 
                                 glass[dir] = {'id':gmenu.id,'panel':[]}
                             continue
@@ -79,12 +71,6 @@ class Http(models.AbstractModel):
                                     action = 'ir.actions.server,%s' % self.env.ref('padtool.ir_actions_server_pad').id
                                     pmenu = Menu.sudo().create({'name': pname, 'parent_id': parent,'action':action,'groups_id':[(6, 0, [self.env.ref('padtool.group_pad_user').id])]})
                                     
-                                    #action = 'ir.actions.act_window,%s' % self.env.ref('padtool.action_pad_parameter_window').id
-                                    #Menu.sudo().create({'name': 'Parameter', 'parent_id': pmenu.id,'action':action})
-                            
-                                    #action = 'ir.actions.client,%s' % self.env.ref('padtool.action_panelmap').id
-                                    #Menu.sudo().create({'name': 'PanelMap', 'parent_id': pmenu.id,'action':action})
-
                                 glass[dir]['panel'].append(pname)    
                         
             except IOError:
@@ -96,15 +82,6 @@ class Http(models.AbstractModel):
         for menu in menus:
             if(menu.name not in glass):
                 menu.unlink(True)
-            else:
-                sub_menus = Menu.search([('parent_id', '=', menu.id)])
-                for smenu in sub_menus:
-                    if(smenu.name != 'GlassMap' and smenu.name not in glass[menu.name]['panel']):
-                        smenu.unlink(True)
-                    
-                        
-        
-        #root = Menu.create({'name': 'Test root'})
-        #child1 = Menu.create({'name': 'Test child 1', 'parent_id': self.env.ref('padtool.menu_root').id,'action':'ir.actions.act_window,3'})
+                
         return super(Http,self).webclient_rendering_context()
 

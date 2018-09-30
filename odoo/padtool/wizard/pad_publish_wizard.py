@@ -9,8 +9,12 @@ from odoo.exceptions import UserError, ValidationError
 class PadPublishWizard(models.TransientModel):
     _name = 'padtool.pad.publish.wizard'
 
+    @api.model
+    def _default_directory(self):
+        return self.env['padtool.directory'].search([('active', '=', True)])
+
     pad_id = fields.Many2one('padtool.pad', string="Pad to Publish", required=True, ondelete='cascade')
-    directory_ids = fields.Many2many('padtool.directory', string='Publish Directory', required=True)
+    directory_ids = fields.Many2many('padtool.directory', string='Publish Directory', required=True,default=_default_directory)
 
     @api.model
     def default_get(self, fields):
@@ -109,8 +113,6 @@ class PadPublishWizard(models.TransientModel):
                 for block in obj['blocks']:
                     if (not 'iInterSectionHeight' in block):
                         continue;
-                    if (not 'isMainMarkModified' in pad) or (not pad['isMainMarkModified']) :
-                        continue
                     if iInterSectionWidth == 0:
                         iInterSectionWidth = block['iInterSectionWidth']
                     
@@ -134,8 +136,6 @@ class PadPublishWizard(models.TransientModel):
                 for block in obj['blocks']:
                     if (not 'iInterSectionHeight' in block):
                         continue;
-                    if (not 'isSubMarkModified' in pad) or (not pad['isSubMarkModified']) :
-                        continue
                     if iInterSectionWidth == 0:
                         iInterSectionWidth = block['iInterSectionWidth']
                     
