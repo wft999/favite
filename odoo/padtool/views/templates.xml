@@ -13,6 +13,7 @@
 			<script type="text/javascript" src="/padtool/static/src/js/hawkmap.js"></script>
             <script type="text/javascript" src="/padtool/static/src/js/panelmap.js"></script>
             <script type="text/javascript" src="/padtool/static/src/js/glassmap.js"></script>
+            <script type="text/javascript" src="/padtool/static/src/js/field_zip_file.js"></script>
             
             <link rel="stylesheet" type="text/css" href="/padtool/static/lib/jquery-contextmenu/jquery.contextMenu.min.css"/>
 			<script src="/padtool/static/lib/jquery-contextmenu/jquery.contextMenu.min.js"></script>

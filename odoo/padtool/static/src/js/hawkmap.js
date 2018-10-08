@@ -70,6 +70,7 @@ var Hawkmap = Widget.extend({
     
     showImage: function(zoom){
     	this.map.clear();
+    	this.image = null;
     	var left = this.parent.hawkeye.left - this.parent.hawkeye.scaleX*this.parent.hawkeye.width/2;
     	var right = this.parent.hawkeye.left + this.parent.hawkeye.scaleX*this.parent.hawkeye.width/2;
     	var top = this.parent.hawkeye.top - this.parent.hawkeye.scaleY*this.parent.hawkeye.height/2;
@@ -536,7 +537,9 @@ var Hawkmap = Widget.extend({
     },
     
     _onMouseUp:function(opt){
-
+    	if(this.image == null)
+    		return;
+    	
     	var zoom = this.map.getZoom();
     	var endPointer = _.clone(opt.pointer);
     	var _isDrawRect = this.map.startPointer.x != endPointer.x ||this.map.startPointer.y != endPointer.y;
@@ -820,6 +823,9 @@ var Hawkmap = Widget.extend({
     },
     
     _onButtonSelectMode:function(e){
+    	if(this.image == null)
+    		return;
+    	
    		this.map.hoverCursor = e.currentTarget.dataset.mode;    			
     	$('.panel-heading button').removeClass('active');
     	$(e.currentTarget).addClass('active');
@@ -828,6 +834,9 @@ var Hawkmap = Widget.extend({
     },
     
     _onButtonCut:function(){
+    	if(this.image == null)
+    		return;
+    	
     	var objs = this.map.getActiveObjects();
     	if(objs.length == 1 && objs[0].type =='cross' && objs[0].pad.padType && objs[0].pad.padType == this.pad.curType && objs[0].pad.padType != 'frame'){
     		this.parent.register(objs[0].pad.panelpad);
@@ -865,6 +874,8 @@ var Hawkmap = Widget.extend({
     },
     
     _onMouseDblclick:function(opt){
+    	if(this.image == null)
+    		return;
     	if(this.map.hoverCursor !== 'default')
     		return;
     	if(this.pad.curType !== 'inspectZone')
@@ -948,8 +959,10 @@ var Hawkmap = Widget.extend({
         			}else{
         				var dirty = true;
             			var height = period * self.map.curPad.goa.number;
-            			self.map.curPad.goa.set({angle,period,dirty,height});
-            			self.map.curPad.goa.setCoords();
+            			if(period !== self.map.curPad.goa.period || angle !== self.map.curPad.goa.angle){
+            				self.map.curPad.goa.set({angle,period,dirty,height});
+                			self.map.curPad.goa.setCoords();
+            			}
         			}
                 	self.map.renderAll();
                     

@@ -357,4 +357,5 @@ class PublishDirectory(models.Model):
             raise ValidationError(_('Invalid publish directory.'))
 
         dir = super(PublishDirectory, self).create(vals)
-        return dir       
+        return dir   
+    

@@ -52,9 +52,6 @@ class Padtool(http.Controller):
         #custom_view.write({ 'arch': arch })
         return {'result': True}
     
-#     @http.route('/padtool/padtool/', auth='public')
-#     def index(self, **kw):
-#         return "Hello, world"
 
 #     @http.route('/padtool/padtool/objects/', auth='public')
 #     def list(self, **kw):
