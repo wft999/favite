@@ -11,6 +11,7 @@ from PIL import Image
 from io import BytesIO
 import base64
 
+
 from odoo.exceptions import UserError, ValidationError
 
 try:
@@ -68,12 +69,13 @@ class Pad(models.Model):
     def create(self, vals):
         if not re.match(PADNAME_PATTERN, vals['name']):
             raise ValidationError(_('Invalid pad name. Only alphanumerical characters, underscore, hyphen are allowed.'))
-        menu_id = self.env.context['params']['menu_id']
-        menu = self.env['ir.ui.menu'].browse(menu_id)
-        parts=[c for c in menu.complete_name.split('/') if c]
-        vals['glassName'] = parts[2]
-        vals['panelName'] = parts[3]
-        vals['GlassToGlassMode'] = 0
+        
+        if ('glassName' not in vals) or ('panelName' not in vals):
+            menu_id = self.env.context['params']['menu_id']
+            menu = self.env['ir.ui.menu'].browse(menu_id)
+            parts=[c for c in menu.complete_name.split('/') if c]
+            vals['glassName'] = parts[2]
+            vals['panelName'] = parts[3]
         pad = super(Pad, self).create(vals)
         return pad
     
@@ -233,7 +235,8 @@ class Pad(models.Model):
             'view_id': False,
             'view_type': 'form',
             'domain': [('glassName', '=', parts[2]), ('panelName', '=', parts[3])],
-            'target': 'current'
+            'target': 'current',
+            'flags':{'import_enabled':False,'import_pad_enabled':True}
             }
         
     @api.model
@@ -330,7 +333,173 @@ class Pad(models.Model):
             "globalConf":globalConf,
         }
         
-    
+    @api.model
+    def import_pad(self,file,menu_id):
+        written = True
+        message = ''
+
+        content = {'objs':[]}
+        pad = {'name':file.filename.split('.')[0]}
+        
+        try:
+            menu = self.env['ir.ui.menu'].browse(int(menu_id))
+            parts=[c for c in menu.complete_name.split('/') if c]
+            pad['glassName'] = parts[2]
+            pad['panelName'] = parts[3]
+            
+            root = odoo.tools.config['glass_root_path']   
+            padConfFile = root + '/' + parts[2] + "/PadToolConfig.ini"
+            if not os.path.isfile(padConfFile):
+                raise Exception("File(%s) doesn't exist" % padConfFile)
+            padConf = ConfigParser.ConfigParser()
+            padConf.read(padConfFile)
+            cameraFile = root + '/' + parts[2]  +'/' + padConf['GLASS_INFORMATION']['CAMERA_FILE']
+            if not os.path.isfile(cameraFile):
+                raise Exception("File(%s) doesn't exist" % cameraFile)
+            cameraConf = ConfigParser.RawConfigParser()
+            with open(cameraFile, 'r') as f:
+                cameraConf.read_string("[general]\r\n" + f.read())
+            
+                
+            padParser = ConfigParser.RawConfigParser()
+            padParser.read_string("[DEFAULT]\r\n" + file.read().decode())
+            par = padParser._defaults
+            
+            content['dPanelCenterX'],content['dPanelCenterY'] = (float(s) for s in par['PanelCenter'.lower()].split(','))
+            pad['GolbalToleranceRegularX'],pad['GolbalToleranceRegularY'] = (int(s) for s in par['GolbalToleranceRegular'.lower()].split(','))
+            pad['GolbalToleranceUnregularX'],pad['GolbalToleranceUnregularY'] = (int(s) for s in par['GolbalToleranceUnregular'.lower()].split(','))
+            pad['GolbalIndentRegularX'],pad['GolbalIndentRegularY'] = (float(s) for s in par['GolbalIndentRegular'.lower()].split(','))
+            pad['GolbalIndentUnregularX'],pad['GolbalIndentUnregularY'] = (float(s) for s in par['GolbalIndentUnregular'.lower()].split(','))
+            
+            pad['GlassToGlassMode'] = int(par['GlassToGlassMode'.lower()])
+            pad['NeglectInspIfNoMarkResult'] = int(par['NeglectInspIfNoMarkResult'.lower()])
+            pad['BMMode'] = int(par['BMMode'.lower()])
+            pad['BMPeriodX0'] = float(par['BMPeriodX0'.lower()])
+            pad['BMPeriodY0'] = float(par['BMPeriodY0'.lower()])
+            pad['BMPeriodX1'] = float(par['BMPeriodX1'.lower()])
+            pad['BMPeriodY1'] = float(par['BMPeriodY1'.lower()])
+            
+            frameLeft0,frameBottom0 = (float(s) for s in par['PadFrame0.postion_topleft'.lower()].split(','))
+            frameRight0,frameBottom0 = (float(s) for s in par['PadFrame0.postion_topright'.lower()].split(','))
+            frameLeft0,frameTop0 = (float(s) for s in par['PadFrame0.postion_bottomleft'.lower()].split(','))
+            frameRight0,frameTop0 = (float(s) for s in par['PadFrame0.postion_bottomright'.lower()].split(','))
+            
+            frameLeft1,frameBottom1 = (float(s) for s in par['PadFrame1.postion_topleft'.lower()].split(','))
+            frameRight1,frameBottom1 = (float(s) for s in par['PadFrame1.postion_topright'.lower()].split(','))
+            frameLeft1,frameTop1 = (float(s) for s in par['PadFrame1.postion_bottomleft'.lower()].split(','))
+            frameRight1,frameTop1 = (float(s) for s in par['PadFrame1.postion_bottomright'.lower()].split(','))
+            
+            frameLeft2,frameBottom2 = (float(s) for s in par['PadFrame2.postion_topleft'.lower()].split(','))
+            frameRight2,frameBottom2 = (float(s) for s in par['PadFrame2.postion_topright'.lower()].split(','))
+            frameLeft2,frameTop2 = (float(s) for s in par['PadFrame2.postion_bottomleft'.lower()].split(','))
+            frameRight2,frameTop2 = (float(s) for s in par['PadFrame2.postion_bottomright'.lower()].split(','))
+            
+            frameLeft3,frameBottom3 = (float(s) for s in par['PadFrame3.postion_topleft'.lower()].split(','))
+            frameRight3,frameBottom3 = (float(s) for s in par['PadFrame3.postion_topright'.lower()].split(','))
+            frameLeft3,frameTop3 = (float(s) for s in par['PadFrame3.postion_bottomleft'.lower()].split(','))
+            frameRight3,frameTop3 = (float(s) for s in par['PadFrame3.postion_bottomright'.lower()].split(','))
+            
+            innerFrame = {"padType":"frame","points":[{},{}]}
+            innerFrame['points'][0]['ux'] = frameRight0 + content['dPanelCenterX']
+            innerFrame['points'][0]['uy'] = frameTop1 + content['dPanelCenterY']
+            innerFrame['points'][1]['ux'] = frameLeft2 + content['dPanelCenterX']
+            innerFrame['points'][1]['uy'] = frameBottom3 + content['dPanelCenterY']
+            content['objs'].append(innerFrame)
+            
+            outrtFrame = {"padType":"frame","points":[{},{}]}
+            outrtFrame['points'][0]['ux'] = frameLeft0 + content['dPanelCenterX']
+            outrtFrame['points'][0]['uy'] = frameBottom1 + content['dPanelCenterY']
+            outrtFrame['points'][1]['ux'] = frameRight1 + content['dPanelCenterX']
+            outrtFrame['points'][1]['uy'] = frameTop3 + content['dPanelCenterY']
+            content['objs'].append(outrtFrame)
+            
+            TotalRegionNumber = int(par.get('TotalRegionNumber'.lower(),0))
+            for i in range(0, TotalRegionNumber):
+                (regionLeft,regionBottom),(regionRight,_),(_1,regionTop),(_2,_3) = ((float(s2) for s2 in s1.split(',')) for s1 in par[('Region%d.region' % i).lower()].split(';'))
+                region = {'points':[{},{}],'padType':'region'}
+                region['points'][0]['ux'] = regionLeft + content['dPanelCenterX']
+                region['points'][0]['uy'] = regionBottom + content['dPanelCenterY']
+                region['points'][1]['ux'] = regionRight + content['dPanelCenterX']
+                region['points'][1]['uy'] = regionTop + content['dPanelCenterY']
+                content['objs'].append(region)
+                
+            MainMarkNumber = int(par.get('MainMarkNumber'.lower(),0))
+            for i in range(0, MainMarkNumber):
+                ipindex = int(par[('MainMark%d.ipindex' % i).lower()]) + 1
+                scanindex = int(par[('MainMark%d.scanindex' % i).lower()]) + 1
+                resolutionx = float(cameraConf['IP%dscantimes%d' % (ipindex,scanindex)]['Camera_X_Res'])
+                resolutiony = float(cameraConf['IP%dscantimes%d' % (ipindex,scanindex)]['Camera_Y_Res'])
+                sizex,sizey = (int(s)  for s in par[('MainMark%d.size' % i).lower()].split(','))
+                sizex *= resolutionx
+                sizey *= resolutiony
+                posx,posy = (float(s)  for s in par[('MainMark%d.pos' % i).lower()].split(','))
+                posx += content['dPanelCenterX']
+                posy += content['dPanelCenterY']
+                mainMark = {'points':[{},{}],'padType':'mainMark'}
+                mainMark['points'][0]['ux'] = posx - sizex/2
+                mainMark['points'][0]['uy'] = posy - sizey/2
+                mainMark['points'][1]['ux'] = posx + sizex/2
+                mainMark['points'][1]['uy'] = posy + sizey/2
+                content['objs'].append(mainMark)
+            
+            SubMarkNumber = int(par.get('SubMarkNumber'.lower(),0))
+            for i in range(0, SubMarkNumber):
+                ipindex = int(par[('SubMark%d.ipindex' % i).lower()]) + 1
+                scanindex = int(par[('SubMark%d.scanindex' % i).lower()]) + 1
+                resolutionx = float(cameraConf['IP%dscantimes%d' % (ipindex,scanindex)]['Camera_X_Res'])
+                resolutiony = float(cameraConf['IP%dscantimes%d' % (ipindex,scanindex)]['Camera_Y_Res'])
+                sizex,sizey = (int(s)  for s in par[('SubMark%d.size' % i).lower()].split(','))
+                sizex *= resolutionx
+                sizey *= resolutiony
+                posx,posy = (float(s)  for s in par[('SubMark%d.pos' % i).lower()].split(','))
+                posx += content['dPanelCenterX']
+                posy += content['dPanelCenterY']
+                subMark = {'points':[{},{}],'padType':'subMark'}
+                subMark['points'][0]['ux'] = posx - sizex/2
+                subMark['points'][0]['uy'] = posy - sizey/2
+                subMark['points'][1]['ux'] = posx + sizex/2
+                subMark['points'][1]['uy'] = posy + sizey/2
+                content['objs'].append(subMark)    
+                
+            Pad_Filterpos_Number = int(par.get('Pad_Filterpos_Number'.lower(),0))
+            for i in range(0, Pad_Filterpos_Number):
+                uninspectZone = {'points':[],'padType':'uninspectZone'} 
+                Left,Bottom = (float(s)  for s in par[('Pad.Filterpos%d.BottomLeft' % i).lower()].split(','))
+                Right,Top = (float(s)  for s in par[('Pad.Filterpos%d.TopRight' % i).lower()].split(','))
+                uninspectZone['points'].append({'ux':Left + content['dPanelCenterX'],'uy':Bottom + content['dPanelCenterY']})
+                uninspectZone['points'].append({'ux':Right + content['dPanelCenterX'],'uy':Top + content['dPanelCenterY']})
+                content['objs'].append(uninspectZone)  
+                 
+            Pad_Filter_Number = int(par.get('Pad_Filter_Number'.lower(),0))
+            for i in range(0, Pad_Filter_Number):
+                uninspectZone = {'points':[],'padType':'uninspectZone'}
+                for p in par[('Pad.Filter%d' % i).lower()].split(';'):
+                    if p == '':
+                        continue
+                    x,y = (float(s)  for s in p.split(','))
+                    uninspectZone['points'].append({'ux':x + content['dPanelCenterX'],'uy':y + content['dPanelCenterY']})
+                content['objs'].append(uninspectZone)
+                
+            Pad_Inspect_Number = int(par.get('Pad_Inspect_Number'.lower(),0))
+            for i in range(0, Pad_Inspect_Number):
+                inspectZone = {'points':[],'padType':'inspectZone'}
+                xPeriod,yPeriod = (float(s)  for s in par[('Pad.Inspect%d.Period' % i).lower()].split(','))
+                inspectZone['periodX'] = xPeriod
+                inspectZone['periodY'] = yPeriod
+                inspectZone['D1G1'] = int(par[('Pad.Inspect%d.D1G1' % i).lower()])
+                for p in par[('Pad.Inspect%d' % i).lower()].split(';'):
+                    if p == '':
+                        continue
+                    x,y = (float(s)  for s in p.split(','))
+                    inspectZone['points'].append({'ux':x + content['dPanelCenterX'],'uy':y + content['dPanelCenterY']})
+                content['objs'].append(inspectZone)
+                    
+            pad['content'] = json.dumps(content)
+            self.create(pad)
+        except Exception as e:
+            written = False
+            message = str(e)
+        return {'success': written,'message':message}
 
 class PublishDirectory(models.Model):
     _name = "padtool.directory"
@@ -345,9 +514,11 @@ class PublishDirectory(models.Model):
     
     @api.multi
     def write(self, vals):
-        vals['name'] = os.path.normpath(vals['name'])
-        if not os.path.exists(vals['name']):
-            raise ValidationError(_('Invalid publish directory.'))
+        if 'name' in vals:
+            vals['name'] = os.path.normpath(vals['name'])
+            if not os.path.exists(vals['name']):
+                raise ValidationError(_('Invalid publish directory.'))
+            
         return super(PublishDirectory, self).write(vals)
 
     @api.model

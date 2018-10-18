@@ -59,11 +59,13 @@ var Glassmap = Widget.extend(ControlPanelMixin,{
     		self.minZoom = zoom;
     		self.map.setZoom(zoom);
     		self.map.setDimensions({width:img.width*zoom,height:img.height*zoom});
+    		self.map.wrapperEl.style['width'] = '';
+       	 	self.map.wrapperEl.style['height'] = '';
     		//this.map.setBackgroundImage(img);
     		self.map.add(img);
 
-    		self.map.on('mouse:move',_.debounce(self._onMouseMove.bind(self), 100));    		
-    		self.map.on('mouse:out', _.debounce(self._onMouseOut.bind(self), 110));  
+    		self.map.on('mouse:move',self._onMouseMove.bind(self));    		
+    		self.map.on('mouse:out', self._onMouseOut.bind(self));  
     		self.map.on('mouse:up', self._onMouseUp.bind(self));
     		self.map.on('mouse:down',self._onMouseDown.bind(self));
     		
@@ -107,11 +109,12 @@ var Glassmap = Widget.extend(ControlPanelMixin,{
     	this.map.startPointer = opt.pointer;
     },
 	_onMouseMove:function(opt){
-		
-		var zoom = this.map.getZoom();
-		var x = opt.e.offsetX;
-		var y = opt.e.offsetY;
-		$(".map-info").text("image(x:"+Math.round(x/zoom)+",y:"+Math.round(y/zoom)+") window(x:"+x+",y:"+y+")");
+		if(this.map){
+			var zoom = this.map.getZoom();
+			var x = opt.e.offsetX;
+			var y = opt.e.offsetY;
+			$(".map-info").text("image(x:"+Math.round(x/zoom)+",y:"+Math.round(y/zoom)+") window(x:"+x+",y:"+y+")");
+		}
 		
     	opt.e.stopPropagation();
         opt.e.preventDefault();
@@ -171,14 +174,14 @@ var Glassmap = Widget.extend(ControlPanelMixin,{
 			if (zoom > 1.2) zoom = 1.2;
 			if (zoom <= this.minZoom) zoom = this.minZoom;
 			
-			var div = this.$('div.canvas-map').length? this.$('div.canvas-map'): this.$el;
-			
+			var div = $('div.o_content')
 			x = x * zoom - (opt.e.offsetX -div.scrollLeft());
 			y = y * zoom - (opt.e.offsetY-div.scrollTop());
 			
 			this.map.setZoom(zoom);
 			this.map.setDimensions({width:this.image.width*zoom,height:this.image.height*zoom});
-			//this.image.scale(zoom);
+			this.map.wrapperEl.style['width'] = '';
+	    	this.map.wrapperEl.style['height'] = '';
 			
 			opt.e.preventDefault();
 			opt.e.stopPropagation();

@@ -7,6 +7,7 @@ from PIL import Image
 import odoo
 from odoo import http
 from odoo.http import request
+from odoo.tools import misc
 
 class Padtool(http.Controller):
     @http.route('/padtool/<string:glass_name>/image<int:width>X<int:height>', type='http', auth='user')
@@ -52,16 +53,7 @@ class Padtool(http.Controller):
         #custom_view.write({ 'arch': arch })
         return {'result': True}
     
-
-#     @http.route('/padtool/padtool/objects/', auth='public')
-#     def list(self, **kw):
-#         return http.request.render('padtool.listing', {
-#             'root': '/padtool/padtool',
-#             'objects': http.request.env['padtool.padtool'].search([]),
-#         })
-
-#     @http.route('/padtool/padtool/objects/<model("padtool.padtool"):obj>/', auth='public')
-#     def object(self, obj, **kw):
-#         return http.request.render('padtool.object', {
-#             'object': obj
-#         })
+    @http.route('/padtool/import_pad', methods=['POST'])
+    def import_pad(self, file, menu_id, jsonp='callback'):
+        result =  request.env['padtool.pad'].import_pad(file,menu_id)
+        return 'window.top.%s(%s)' % (misc.html_escape(jsonp), json.dumps(result))

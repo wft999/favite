@@ -342,6 +342,8 @@ var Panelmap = Map.extend(ControlPanelMixin,{
     			o.periodX = obj.periodX || 0;
     			o.periodY = obj.periodY || 0;
     			o.D1G1 = obj.D1G1 || 0;
+    			o.goaUX = obj.goaUX || 0;
+    			o.goaUY = obj.goaUY || 0;
     		}else if(obj.padType == 'region'){
     			o.iFrameNo = obj.iFrameNo;
     		}

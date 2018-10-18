@@ -2,7 +2,7 @@
 
 <templates xml:space="preserve">
 <t t-name="Map">
-	<div class="canvas-map" style="width:1150px; height:100%; overflow:auto;">
+	<div class="canvas-map">
 		<canvas id="map" width="800" height="600"  style="border:1px solid #d3d3d3;">
                 Your browser does not support the HTML5 canvas tag.
 		</canvas>

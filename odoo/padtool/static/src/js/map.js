@@ -57,6 +57,8 @@ var Map = Widget.extend({
     		self.minZoom = zoom;
     		self.map.setZoom(zoom);
     		self.map.setDimensions({width:img.width*zoom,height:img.height*zoom});
+    		self.map.wrapperEl.style['width'] = '';
+       	 	self.map.wrapperEl.style['height'] = '';
     		self.map.add(img);
 
     		//self.map.on('mouse:move',_.debounce(self._onMouseMove.bind(self), 100));
@@ -258,12 +260,13 @@ var Map = Widget.extend({
     	 if (zoom > 1.0) zoom = 1.0;
     	 if (zoom <= this.minZoom) zoom = this.minZoom;
  		
-    	 var div = this.$('div.canvas-map').length? this.$('div.canvas-map'): this.$el;
- 		
+    	 var div = $('div.o_content')
     	 x = x1 * zoom - (x - div.scrollLeft());
     	 y = y1 * zoom - (y - div.scrollTop());
     	 
     	 this.map.setDimensions({width:this.image.width*zoom,height:this.image.height*zoom});
+    	 this.map.wrapperEl.style['width'] = '';
+    	 this.map.wrapperEl.style['height'] = '';
     	 this.map.setZoom(zoom);
 
     	 div.scrollTop(y);
@@ -349,18 +352,60 @@ var Map = Widget.extend({
  		var self = this;
  		this.innerFrame = null;
  		this.outerFrame = null;
+ 		var hasRegion = false;
  		this.jsonpad.objs && this.jsonpad.objs.forEach(function(pad){
  			var obj = new Mycanvas.MyPolyline(self.map,pad.padType);
  			obj = _.extend(obj, pad);
+ 			for(var i = 0; i < obj.points.length; i++){
+ 				if(obj.points[i].x === undefined && obj.points[i].ux !== undefined){
+ 					var out = self.coordinate.UMCoordinateToPanelMapCoordinate(obj.points[i].ux,obj.points[i].uy);
+ 					obj.points[i].x = out.dOutputX;
+ 					obj.points[i].y = self.image.height - out.dOutputY;
+ 				}else if(obj.points[i].x !== undefined && obj.points[i].ux === undefined){
+ 					var out = self.coordinate.PanelMapCoordinateToUMCoordinate(obj.points[i].x,self.image.height-obj.points[i].y);
+ 					obj.points[i].ux = out.dOutputX;
+ 					obj.points[i].uy = out.dOutputY;
+ 				}
+ 			}
  			obj.update();
- 			//self.pad.objs.push(obj);
  			
  			if(pad.padType == 'frame'){
  		 		if(self.innerFrame == null)
  		 			self.innerFrame = obj;
  		 		else if(self.outerFrame == null)
  		 			self.outerFrame = obj;
+ 			}else if(pad.padType == 'region'){
+ 				hasRegion = true;
+ 			}else if(pad.padType == 'mainMark' || pad.padType == 'subMark'){
+ 				if(pad.blocks === undefined){
+ 					var ux1 = obj.points[0].ux;
+ 					var uy1 = obj.points[0].uy;
+ 					var ux2 = obj.points[1].ux;
+ 					var uy2 = obj.points[1].uy;
+ 					self.tmpCoordinate.GetRectIntersectionInfoInBlockMapMatrix(Math.min(ux1,ux2),Math.min(uy1,uy2),Math.max(ux1,ux2),Math.max(uy1,uy2),true);
+ 					if(self.tmpCoordinate.bmpBlockMapPara.m_BlockMap.length == 1){
+ 						obj.blocks = _.map(self.tmpCoordinate.bmpBlockMapPara.m_BlockMap[0],function(item){
+ 		    	    		return {
+ 		    	    			iIPIndex:item.iIPIndex,
+ 		    	    			iScanIndex:item.iScanIndex,
+ 		    	    			iBlockIndex:item.iBlockIndex,
+ 		    	    			iInterSectionStartX:item.iInterSectionStartX,
+ 		    	    			iInterSectionStartY:item.iInterSectionStartY,
+ 		    	    			iInterSectionWidth:item.iInterSectionWidth,
+ 		    	    			iInterSectionHeight:item.iInterSectionHeight,
+ 		    	    			iBlockMapHeight:item.iBlockMapHeight
+ 		    	    			};
+ 		    	    		});
+ 		    			
+ 		    			self.pad.isModified = true;
+ 		    			if(pad.padType == 'mainMark')
+ 		    				self.pad.isMainMarkModified = true;
+ 		    			if(pad.padType == 'subMark')
+ 		    				self.pad.isSubMarkModified = true;
+ 					}
+ 				}
  			}
+ 				
  		})
  		
  		if(this.innerFrame == null || this.outerFrame == null){
@@ -370,7 +415,6 @@ var Map = Widget.extend({
  			let {dOutputX:ux2,dOutputY:uy2} = this.coordinate.PanelMapCoordinateToUMCoordinate(this.image.width-500,this.image.height-500);
  			this.innerFrame.points.push({x:this.image.width-500,y:500,ux:ux2,uy:uy2});
  			this.innerFrame.update();
- 			//this.pad.objs.push(this.innerFrame);
 
  			this.outerFrame = new Mycanvas.MyPolyline(this.map,this.pad.curType);
 			let {dOutputX:ux3,dOutputY:uy3} = this.coordinate.PanelMapCoordinateToUMCoordinate(300,300);
@@ -378,10 +422,14 @@ var Map = Widget.extend({
 			let {dOutputX:ux4,dOutputY:uy4} = this.coordinate.PanelMapCoordinateToUMCoordinate(this.image.width-300,this.image.height-300);
 			this.outerFrame.points.push({x:this.image.width-300,y:300,ux:ux4,uy:uy4});
 			this.outerFrame.update();
-			//this.pad.objs.push(this.outerFrame);
-
+			
 			this._drawRegion();
+			hasRegion = true;
 		}
+ 		
+ 		if(!hasRegion)
+ 			this._drawRegion();
+ 		
 
  		this.innerFrame.crosses[0].bringToFront();
  		this.innerFrame.crosses[1].bringToFront();

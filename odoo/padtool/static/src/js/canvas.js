@@ -133,7 +133,6 @@ var Goa = fabric.util.createClass(fabric.Object, {
 		ctx.strokeStyle="red"; 
 		
 		ctx.lineWidth= 1/(this.canvas.getZoom()*this.scaleY);
-		
 
 		ctx.beginPath(); 
 		ctx.moveTo(-this.width/2,-this.height/2);
@@ -155,6 +154,7 @@ var Goa = fabric.util.createClass(fabric.Object, {
 		ctx.lineTo(this.width/2,-this.height/2+i*this.period);
 		ctx.stroke();
 		
+		ctx.lineWidth= 1/(this.canvas.getZoom()*this.scaleX);
 		ctx.beginPath(); 
 		ctx.moveTo(-this.width/2,-this.height/2);
 		ctx.lineTo(-this.width/2,-this.height/2+i*this.period);

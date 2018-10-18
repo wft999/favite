@@ -17,7 +17,7 @@
     # Check https://github.com/odoo/odoo/blob/master/odoo/addons/base/module/module_data.xml
     # for the full list
     'category': 'Favite Tools',
-    'version': '2.6',
+    'version': '2.7',
 
     # any module necessary for this one to work correctly
     'depends': ['web'],
@@ -38,6 +38,7 @@
     ],
     'qweb': [
         "static/src/xml/map.xml",
+        "static/src/xml/pad_import.xml",
     ],
     'installable': True,
     'auto_install': False,

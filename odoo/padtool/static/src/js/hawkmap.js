@@ -225,13 +225,22 @@ var Hawkmap = Widget.extend({
         			maxX = maxX == undefined?p.x:(p.x<maxX?maxX:p.x);
         			maxY = maxY == undefined?p.y:(p.y<maxY?maxY:p.y);
         		})
+        		var goa_left = (minX+maxX)/2;
+        		var goa_top = (minY+maxY)/2;
+        		if(obj.goaUX || obj.goaUY){
+        			var tmp = self.parent.coordinate.UMCoordinateToHawkmapCoordinate(obj.goaUX,obj.goaUY);
+        			if(tmp.iOutputX !== undefined && tmp.iOutputY !== undefined){
+        				goa_left = tmp.iOutputX;
+            			goa_top = self.image.height - tmp.iOutputY;
+        			}
+        		}
     			pad.goa = new Mycanvas.Goa({
-    				left:(minX+maxX)/2,
-        			top:(minY+maxY)/2,
+    				left:goa_left,
+        			top:goa_top,
  	    			pad:pad,
  	    			period:period,
 					angle:fabric.util.radiansToDegrees(angle),
-					visible:self.parent.pad.curType==pad.padType,
+					visible:false,
 					hoverCursor:'move'
  	    		}); 
  	        	self.map.add(pad.goa);
@@ -332,6 +341,9 @@ var Hawkmap = Widget.extend({
     		
         	this.$el.find('.fa-cut').toggleClass('o_hidden',false);
         	this.map.renderAll();
+    	}else if(opt.target.pad && opt.target.type === 'goa'){
+    		this.curPad = opt.target.pad;
+    		this._isSelectCross = true;
     	}else{
     		this._isSelectCross = false;
     	}
@@ -352,11 +364,17 @@ var Hawkmap = Widget.extend({
     	 if(opt.target.type == "goa"){
      		this.pad.isModified = true;
      		
+     		var dResolutionX =  this.parent.coordinate.mpMachinePara.aIPParaArray[0].aScanParaArray[0].dResolutionX;
      		var dResolutionY =  this.parent.coordinate.mpMachinePara.aIPParaArray[0].aScanParaArray[0].dResolutionY;
-			var period = dResolutionY * (opt.target.period * opt.target.scaleY )
+			var period = opt.target.period * opt.target.scaleY 
 			
-			opt.target.pad.panelpad.periodX = period*fabric.util.sin(fabric.util.degreesToRadians(opt.target.angle));
-			opt.target.pad.panelpad.periodY = period*fabric.util.cos(fabric.util.degreesToRadians(opt.target.angle));
+			opt.target.pad.panelpad.periodX = period*fabric.util.sin(fabric.util.degreesToRadians(opt.target.angle))*dResolutionX;
+			opt.target.pad.panelpad.periodY = period*fabric.util.cos(fabric.util.degreesToRadians(opt.target.angle))*dResolutionY;
+			
+			var {dOutputX:ux, dOutputY:uy} = this.parent.coordinate.HawkmapCoordinateToUMCoordinate(opt.target.left,this.image.height-opt.target.top);
+			opt.target.pad.panelpad.goaUX = ux;
+			opt.target.pad.panelpad.goaUY = uy;
+			this.isGoaModified = true;
      	}
      },
      
@@ -539,6 +557,10 @@ var Hawkmap = Widget.extend({
     _onMouseUp:function(opt){
     	if(this.image == null)
     		return;
+    	if(this.isGoaModified){
+    		this.isGoaModified = false;
+    		return;
+    	}
     	
     	var zoom = this.map.getZoom();
     	var endPointer = _.clone(opt.pointer);
@@ -615,6 +637,8 @@ var Hawkmap = Widget.extend({
 					pad.periodX = obj.periodX || 0;
 					pad.periodY = obj.periodY || 0;
 					pad.D1G1 = obj.D1G1 || 0;
+					pad.goaUX = obj.goaUX? (obj.goaUX + uoffsetX): 0;
+	    			pad.goaUY = obj.goaUY?(obj.goaUY + uoffsetY) : 0;
 	    		}
     		});
     		this.parent.register(pads,'copy');
@@ -733,6 +757,10 @@ var Hawkmap = Widget.extend({
 						if(this.map.curPad == null && this.map.pads[i].containsPoint({x,y})){
 							this.map.curPad = this.map.pads[i];
 							this._checkMark(this.map.curPad);
+							if(this.map.curPad.goa && (this.map.curPad.goa.left > this.image.width || this.map.curPad.goa.left < 0 || this.map.curPad.goa.top > this.image.height || this.map.curPad.goa.top < 0)){
+					    		this.map.curPad.goa.set({left:x,top:y,})
+					    		this.map.curPad.goa.setCoords();
+					    	}
 						}
 					}
 				}
@@ -815,6 +843,7 @@ var Hawkmap = Widget.extend({
 					}
 				}else if(obj.type === 'goa'){
 					obj.hasControls = self.map.hoverCursor == 'default';	
+					obj.visible = obj.pad == self.map.curPad;
 				}
 			}
 		});
@@ -902,11 +931,11 @@ var Hawkmap = Widget.extend({
 		}
     	
    	 	if(this.map.curPad){
-   	 		this._onButtonAlign();
+   	 		this._onButtonAlign(x,y);
    	 	}
     },
     
-    _onButtonAlign:function(){
+    _onButtonAlign:function(x,y){
     	if(this.pad.curType != 'inspectZone')
     		return;
     	if(this.map.curPad == null || this.map.curPad.padType !== this.pad.curType)
@@ -926,30 +955,24 @@ var Hawkmap = Widget.extend({
                 	pad.D1G1 = this.$content.find('.o_set_d1g1_input')[0].checked?1:0;
                 	
                 	var angle,period;
+                	var periodX = pad.periodX/self.parent.coordinate.mpMachinePara.aIPParaArray[0].aScanParaArray[0].dResolutionX;
+                	var periodY = pad.periodY/self.parent.coordinate.mpMachinePara.aIPParaArray[0].aScanParaArray[0].dResolutionY;
         			if(pad.periodY == 0){
      					angle = fabric.util.degreesToRadians(90);
-     					period = pad.periodX;
+     					period = periodX;
      				}else if(pad.periodX == 0){
      					angle = fabric.util.degreesToRadians(0);
-     					period = pad.periodY;
+     					period = periodY;
      				}else{
-     					angle = Math.atan(pad.periodX/pad.periodY);
-     					period = pad.periodY / fabric.util.cos(angle);
+     					angle = Math.atan(periodX/periodY);
+     					period = periodY / fabric.util.cos(angle);
      				}
         			angle = fabric.util.radiansToDegrees(angle);
-        			period = period / self.parent.coordinate.mpMachinePara.aIPParaArray[0].aScanParaArray[0].dResolutionY;
         			
         			if(self.map.curPad.goa === undefined){
-        				var minX,minY,maxX,maxY;
-        				self.map.curPad.points.forEach(function(p){
-                			minX = minX == undefined?p.x:(p.x>minX?minX:p.x);
-                			minY = minY == undefined?p.y:(p.y>minY?minY:p.y);
-                			maxX = maxX == undefined?p.x:(p.x<maxX?maxX:p.x);
-                			maxY = maxY == undefined?p.y:(p.y<maxY?maxY:p.y);
-                		})
             			self.map.curPad.goa = new Mycanvas.Goa({
-            				left:(minX+maxX)/2,
-                			top:(minY+maxY)/2,
+            				left:x,
+                			top:y,
          	    			pad:self.map.curPad,
          	    			period,
         					angle,
@@ -959,6 +982,7 @@ var Hawkmap = Widget.extend({
         			}else{
         				var dirty = true;
             			var height = period * self.map.curPad.goa.number;
+            			period = period / self.map.curPad.goa.scaleY;
             			if(period !== self.map.curPad.goa.period || angle !== self.map.curPad.goa.angle){
             				self.map.curPad.goa.set({angle,period,dirty,height});
                 			self.map.curPad.goa.setCoords();

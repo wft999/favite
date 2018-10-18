@@ -37,7 +37,7 @@ class PadPublishWizard(models.TransientModel):
         strParameter += 'GolbalToleranceUnregular = %s,%s\n' % (pad['GolbalToleranceUnregularX'],pad['GolbalToleranceUnregularY'])
         strParameter += 'GolbalIndentRegular = %s,%s\n' % (pad['GolbalIndentRegularX'],pad['GolbalIndentRegularY'])
         strParameter += 'GolbalIndentUnregular = %s,%s\n' % (pad['GolbalIndentUnregularX'],pad['GolbalIndentUnregularY'])
-        strParameter += 'GlassToGlassMode = %s\n' % pad['GlassToGlassMode']
+        strParameter += 'GlassToGlassMode = %s\n' % int(pad['GlassToGlassMode'])
         strParameter += 'NeglectInspIfNoMarkResult = %s\n' % pad['NeglectInspIfNoMarkResult']
             
         strParameter += 'BMMode  = %d\n' % int(pad['BMMode'])

@@ -1777,7 +1777,7 @@ var COORDINATE_TRANSFER =  Class.extend({
     				}
     				else
     				{
-    					var MarkRegionTemp = new object();
+    					var MarkRegionTemp = new Object();
 
     					MarkRegionTemp.dPositionX = (dScanRangeLeft + dPanelRight) / 2;
 

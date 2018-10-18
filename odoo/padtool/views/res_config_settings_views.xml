@@ -34,17 +34,17 @@
                                     </div>
 							</div>
 							
-                        	<div class="col-xs-12 col-md-6 o_setting_box">
+                        	<div class="col-xs-12 col-md-6 o_setting_box" attrs="{'invisible': 1}">
                                     <div class="o_setting_right_pane">
                                         <label string="hawkeye"/>
                                         <div class="content-group">
                                             <div class="mt16 row">
                                                 <label  string="width(px):" class="col-xs-3 col-md-3 o_light_label"/>
-                                                <field name="hawk_width" class="oe_inline" required="1"/>  
+                                                <field name="hawk_width" class="oe_inline" required="1" />  
                                             </div>
                                             <div class="mt16 row">
                                                 <label  string="height(px):" class="col-xs-3 col-md-3 o_light_label"/>
-                                                <field name="hawk_height" class="oe_inline" required="1"/>
+                                                <field name="hawk_height" class="oe_inline" required="1" />
                                             </div>
                                         </div>
                                     </div>
