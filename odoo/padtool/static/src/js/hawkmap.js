@@ -5,6 +5,7 @@ var core = require('web.core');
 var Widget = require('web.Widget');
 var Mycanvas = require('padtool.Canvas');
 var Dialog = require('web.Dialog');
+var framework = require('web.framework');
 var QWeb = core.qweb;
 var _t = core._t;
 
@@ -53,7 +54,7 @@ var Hawkmap = Widget.extend({
 		
 		this.map.on('selection:updated',this._onObjectSelect.bind(this));
 		this.map.on('selection:created',this._onObjectSelect.bind(this));
-//		this.map.on('object:moved',this._onObjectMoved.bind(this));
+		this.map.on('object:moved',this._onObjectMoved.bind(this));
 		
 		var hidden = this.pad.curType == 'frame' || this.pad.curType == 'subMark';
     	this.$el.find('.fa-edit').toggleClass('o_hidden',hidden);
@@ -155,8 +156,23 @@ var Hawkmap = Widget.extend({
     	var self = this;
     	self.map.clear();
     	self.map.pads = new Array();
-    	self.map.add(self.image.set({hasControls:false,lockMovementX:true,lockMovementY:true,selectable:false,}));
+    	self.map.add(self.image.set({hasControls:false,lockMovementX:true,lockMovementY:true,selectable:false}));
 
+    	var x1 = this.parent.inspectZoneX1;
+ 		var y1 = this.parent.inspectZoneY1;
+ 		var x2 = this.parent.inspectZoneX2;
+ 		var y2 = this.parent.inspectZoneY2;
+ 		x1 = (x1 - self.eyeLeft)/self.parent.padConf[self.parent.panelName].panel_map_ratio_x;
+		y1= (y1 - self.eyeTop)/self.parent.padConf[self.parent.panelName].panel_map_ratio_y;
+		x2 = (x2 - self.eyeLeft)/self.parent.padConf[self.parent.panelName].panel_map_ratio_x;
+		y2= (y2 - self.eyeTop)/self.parent.padConf[self.parent.panelName].panel_map_ratio_y;
+
+		var line1 = new Mycanvas.Line([x1,y1,x1,y2],{stroke: 'blue',pad:null});
+ 		var line2 = new Mycanvas.Line([x1,y1,x2,y1],{stroke: 'blue',pad:null});
+ 		var line3 = new Mycanvas.Line([x2,y2,x2,y1],{stroke: 'blue',pad:null});
+ 		var line4 = new Mycanvas.Line([x2,y2,x1,y2],{stroke: 'blue',pad:null});
+ 		this.map.add(line1,line2,line3,line4);
+ 		
     	this.parent.map.pads.forEach(function(obj){
     		var isCurPad = self.map.curPad && self.map.curPad.panelpad && self.map.curPad.panelpad == obj;
     		var left = self.parent.hawkeye.left - self.parent.hawkeye.scaleX*self.parent.hawkeye.width/2;
@@ -168,7 +184,6 @@ var Hawkmap = Widget.extend({
 
     		var points = obj.points;
     		var pad = new Mycanvas.MyPolyline(self.map,obj.padType);
-    		//pad.selected = obj.selected;
 
     		for(var i = 0; i < points.length; i++){
     			if(points[i].ux){
@@ -201,7 +216,7 @@ var Hawkmap = Widget.extend({
     		var lineVisible = pad.padType == self.parent.pad.curType || (pad.padType == 'region' && self.parent.pad.curType == 'frame');
     		var crossVisible = lineVisible && (pad.padType == 'frame' || self.map.curPad == pad);
     		pad.lines.forEach(function(line){line.visible = lineVisible;});
-    		pad.crosses.forEach(function(cross){cross.visible = crossVisible;})
+    		pad.crosses.forEach(function(cross){cross.visible = crossVisible;cross.hasBorders = cross.visible;})
 
     		
     		if(obj.padType == 'inspectZone' && ((obj.periodX != undefined && obj.periodX != 0) || (obj.periodY != undefined && obj.periodY != 0))){
@@ -262,74 +277,78 @@ var Hawkmap = Widget.extend({
     // Private
     //--------------------------------------------------------------------------
     _onObjectMoved: function(opt){
-    	var objs = [opt.target];
-    	if(opt.target.type == 'activeSelection'){
-    		objs = opt.target._objects;
+    	if(opt.target.type !== 'activeSelection'){
+    		return;
     	}
     	
     	var zoom = this.map.getZoom();
     	var offsetX = (opt.e.offsetX - this.map.startPointer.x)/zoom;
 		var offsetY = (opt.e.offsetY - this.map.startPointer.y)/zoom;
 		
+		var {dOutputX:ux1, dOutputY:uy1} = this.parent.coordinate.HawkmapCoordinateToUMCoordinate(opt.e.offsetX/zoom,this.image.height-opt.e.offsetY/zoom);
+		var {dOutputX:ux2, dOutputY:uy2} = this.parent.coordinate.HawkmapCoordinateToUMCoordinate(this.map.startPointer.x/zoom,this.image.height-this.map.startPointer.y/zoom);
+		var offsetXum = ux1 - ux2;
+		var offsetYum = uy1 - uy2;
+		
 		var self = this;
-		objs.forEach(function(obj){
-			if(obj.pad && obj.type != 'cross' && obj.type != 'goa'){
-				self.parent.register(obj.pad.panelpad);
-				var tmpPoints = _.clone(obj.pad.panelpad.points);
-	    		for(var i = 0; i < obj.pad.points.length; i++){
-	    			obj.pad.points[i].x += offsetX;
-	    			obj.pad.points[i].y += offsetY;
-	    			
-	    			var {dOutputX:ux2, dOutputY:uy2} = self.parent.coordinate.HawkmapCoordinateToUMCoordinate(obj.pad.points[i].x,self.image.height-obj.pad.points[i].y);
-	    			obj.pad.panelpad.points[i].ux = ux2;
-	    			obj.pad.panelpad.points[i].uy = uy2;
-	    			let {dOutputX:x2, dOutputY:y2} = self.parent.coordinate.UMCoordinateToPanelMapCoordinate(ux2,uy2);
-	    			obj.pad.panelpad.points[i].x = x2;
-	    			obj.pad.panelpad.points[i].y = self.parent.image.height - y2;
-	    		}
-	    		
-	    		if(obj.pad.padType == 'mainMark'){
-	    			var pad = obj.pad.panelpad;
-    				var left = Math.min(pad.points[0].ux,pad.points[1].ux);
-    				var right = Math.max(pad.points[0].ux,pad.points[1].ux);
-    				var bottom = Math.min(pad.points[0].uy,pad.points[1].uy);
-    				var top = Math.max(pad.points[0].uy,pad.points[1].uy);
-    				self.parent.tmpCoordinate.GetRectIntersectionInfoInBlockMapMatrix(left,bottom,right,top,true);
-            		if(self.parent.tmpCoordinate.bmpBlockMapPara.m_BlockMap.length == 1){
-            			obj.pad.panelpad.blocks = _.map(self.parent.tmpCoordinate.bmpBlockMapPara.m_BlockMap[0],function(item){
-            	    		return {
-            	    			iIPIndex:item.iIPIndex,
-            	    			iScanIndex:item.iScanIndex,
-            	    			iBlockIndex:item.iBlockIndex,
-            	    			iInterSectionStartX:item.iInterSectionStartX,
-            	    			iInterSectionStartY:item.iInterSectionStartY,
-            	    			iInterSectionWidth:item.iInterSectionWidth,
-            	    			iInterSectionHeight:item.iInterSectionHeight,
-            	    			iBlockMapHeight:item.iBlockMapHeight
-            	    			};
-            	    		});
-            			
-            			self.pad.isMainMarkModified = true;
-            		}else{
-            			for(var i = 0; i < obj.pad.points.length; i++){
-        	    			obj.pad.points[i].x -= offsetX;
-        	    			obj.pad.points[i].y -= offsetY;
-        	    			
-        	    			obj.pad.panelpad.points[i].ux = tmpPoints[i].ux;
-        	    			obj.pad.panelpad.points[i].uy = tmpPoints[i].uy;
-        	    			obj.pad.panelpad.points[i].x = tmpPoints[i].x;
-        	    			obj.pad.panelpad.points[i].y = tmpPoints[i].y;
-        	    		}
-            			
-            			self.parent.notification_manager.warn(_t('Incorrect Operation'),_t('Mark is across multiple IPs!'),false);
-            		}
-	    		}
-	    		
-	    		obj.pad.update();
-	    		obj.pad.panelpad.update();
-				self.parent.pad.isModified = true;
+		this.map.pads.forEach(function(pad){
+			if(pad.padType != self.pad.curType)
+				return;
+			if(!pad.panelpad.selected)
+				return;
+			
+			self.parent.register(pad.panelpad);
+			var tmpPoints = _.clone(pad.panelpad.points);
+			for(var i = 0; i < pad.points.length; i++){
+    			pad.points[i].x += offsetX;
+    			pad.points[i].y += offsetY;
 
-	    	}
+    			pad.panelpad.points[i].ux += offsetXum;
+    			pad.panelpad.points[i].uy += offsetYum;
+    			let {dOutputX:x2, dOutputY:y2} = self.parent.coordinate.UMCoordinateToPanelMapCoordinate(pad.panelpad.points[i].ux,pad.panelpad.points[i].uy);
+    			pad.panelpad.points[i].x = x2;
+    			pad.panelpad.points[i].y = self.parent.image.height - y2;
+    		}	
+			if(pad.padType == 'mainMark'){
+    			var panelpad = pad.panelpad;
+				var left = Math.min(panelpad.points[0].ux,panelpad.points[1].ux);
+				var right = Math.max(panelpad.points[0].ux,panelpad.points[1].ux);
+				var bottom = Math.min(panelpad.points[0].uy,panelpad.points[1].uy);
+				var top = Math.max(panelpad.points[0].uy,panelpad.points[1].uy);
+				self.parent.tmpCoordinate.GetRectIntersectionInfoInBlockMapMatrix(left,bottom,right,top,true);
+        		if(self.parent.tmpCoordinate.bmpBlockMapPara.m_BlockMap.length == 1){
+        			pad.panelpad.blocks = _.map(self.parent.tmpCoordinate.bmpBlockMapPara.m_BlockMap[0],function(item){
+        	    		return {
+        	    			iIPIndex:item.iIPIndex,
+        	    			iScanIndex:item.iScanIndex,
+        	    			iBlockIndex:item.iBlockIndex,
+        	    			iInterSectionStartX:item.iInterSectionStartX,
+        	    			iInterSectionStartY:item.iInterSectionStartY,
+        	    			iInterSectionWidth:item.iInterSectionWidth,
+        	    			iInterSectionHeight:item.iInterSectionHeight,
+        	    			iBlockMapHeight:item.iBlockMapHeight
+        	    			};
+        	    		});
+        			
+        			self.pad.isMainMarkModified = true;
+        		}else{
+        			for(var i = 0; i < pad.points.length; i++){
+    	    			pad.points[i].x -= offsetX;
+    	    			pad.points[i].y -= offsetY;
+    	    			
+    	    			pad.panelpad.points[i].ux = tmpPoints[i].ux;
+    	    			pad.panelpad.points[i].uy = tmpPoints[i].uy;
+    	    			pad.panelpad.points[i].x = tmpPoints[i].x;
+    	    			pad.panelpad.points[i].y = tmpPoints[i].y;
+    	    		}
+        			
+        			self.parent.notification_manager.warn(_t('Incorrect Operation'),_t('Mark is across multiple IPs!'),false);
+        		}
+    		}	
+	    		
+			pad.update();
+    		pad.panelpad.update();
+			self.parent.pad.isModified = true;	
 		});
 		
     },
@@ -735,6 +754,8 @@ var Hawkmap = Widget.extend({
 				}
 			}
 			
+			this.map.discardActiveObject();
+			var selected = new Array();
 			for(var i = 0; i < this.map.pads.length; i++){
 				if(this.map.pads[i].padType != this.pad.curType)
 					continue;
@@ -743,16 +764,20 @@ var Hawkmap = Widget.extend({
 					var bottom = Math.max(this.map.startPointer.y,opt.pointer.y)/zoom;
 					var right = Math.max(this.map.startPointer.x,opt.pointer.x)/zoom;
 					var top = Math.min(this.map.startPointer.y,opt.pointer.y)/zoom;
-					//this.map.pads[i].selected = this.map.pads[i].withinRect(left,right,top,bottom);
-					this.map.pads[i].panelpad.selected = this.map.pads[i].withinRect(left,right,top,bottom);
-				}else{
+					
 					if(opt.e.ctrlKey){
-						if(this.map.pads[i].containsPoint({x,y})){
-							//this.map.pads[i].selected = !this.map.pads[i].selected;
+						if(this.map.pads[i].withinRect(left,right,top,bottom)){
 							this.map.pads[i].panelpad.selected = !this.map.pads[i].panelpad.selected;
 						}
 					}else{
-						//this.map.pads[i].selected = false;
+						this.map.pads[i].panelpad.selected = this.map.pads[i].withinRect(left,right,top,bottom);
+					}
+				}else{
+					if(opt.e.ctrlKey){
+						if(this.map.pads[i].containsPoint({x,y})){
+							this.map.pads[i].panelpad.selected = !this.map.pads[i].panelpad.selected;
+						}
+					}else{
 						this.map.pads[i].panelpad.selected = false;
 						if(this.map.curPad == null && this.map.pads[i].containsPoint({x,y})){
 							this.map.curPad = this.map.pads[i];
@@ -764,10 +789,18 @@ var Hawkmap = Widget.extend({
 						}
 					}
 				}
+				if(this.map.pads[i].panelpad.selected){
+					this.map.pads[i].crosses.forEach(function(c){selected.push(c);})
+					this.map.pads[i].lines.forEach(function(c){selected.push(c);})
+				}
 			}
-			_isDrawRect && this.map.discardActiveObject();
-			this.parent.updateForSelect();
+			if(selected.length > 0){
+				var sel = new fabric.ActiveSelection(selected, {canvas: this.map,hasControls: false,hoverCursor:"move"});
+				this.map.setActiveObject(sel);
+			}
 			
+			//_isDrawRect && this.map.discardActiveObject();
+			this.parent.updateForSelect();
 	    	this.$el.find('.fa-cut').toggleClass('o_hidden',true);
 		}
 
@@ -833,6 +866,7 @@ var Hawkmap = Widget.extend({
 					obj.hoverCursor = self.map.hoverCursor == 'default'?'move':'';
 					obj.visible = (self.map.hoverCursor == 'default' && (obj.pad == self.map.curPad || obj.pad.padType == 'frame'))||
 					(self.map.hoverCursor == 'crosshair' && obj.pad == self.map.curPad);
+					obj.hasBorders = obj.visible;
 				}else if(obj.type === 'line'){
 					if(obj.pad.panelpad.selected){
 						obj.pad.lines.forEach(function(line){line.dirty=true;line.stroke = 'red';line.fill='red'})
@@ -935,6 +969,119 @@ var Hawkmap = Widget.extend({
    	 	}
     },
     
+    _onSearchGOA:function(){
+    	var pad = this.map.curPad.panelpad;
+    	var dResolutionX = this.parent.coordinate.mpMachinePara.aIPParaArray[0].aScanParaArray[0].dResolutionX;
+    	var dResolutionY = this.parent.coordinate.mpMachinePara.aIPParaArray[0].aScanParaArray[0].dResolutionY;
+    	
+    	var uLeft = pad.points[0].ux;
+    	var uRight = pad.points[0].ux;
+    	var uBottom = pad.points[0].uy;
+    	var uTop = pad.points[0].uy;
+    	for(var i = 1; i < pad.points.length; i++){
+    		if(pad.points[i].ux > uRight)
+    			uRight = pad.points[i].ux;
+    		else if(pad.points[i].ux < uLeft)
+    			uLeft = pad.points[i].ux;
+    		
+    		if(pad.points[i].uy > uTop)
+    			uTop = pad.points[i].uy;
+    		else if(pad.points[i].uy < uBottom)
+    			uBottom = pad.points[i].uy;
+    	}
+    	var centerx = (uLeft + uRight)/2;
+    	var centery = (uBottom + uTop)/2;
+    	var width = 1000*dResolutionX;
+    	var height = 1000*dResolutionY;
+    	uLeft = centerx - width/2;
+    	uRight = centerx + width/2;
+    	uBottom = centery - height/2;
+    	uTop = centery + height/2;
+    	if(uLeft < 0) uLeft = 0;
+    	if(uBottom < 0) uBottom = 0;
+    	
+    	this.parent.tmpCoordinate.GetRectIntersectionInfoInBlockMapMatrix(uLeft,uBottom,uRight,uTop,true);
+    	var imgWidth = _.reduce(this.parent.tmpCoordinate.bmpBlockMapPara.m_BlockMap, function(memo, block){ 
+    		return memo + (block[0]&&block[0].bHasIntersection?block[0].iInterSectionWidth:0); 
+    		}, 0);
+    	var imgHeight = _.reduce(this.parent.tmpCoordinate.bmpBlockMapPara.m_BlockMap[0], function(memo, block){ 
+    		return memo  + (block&&block.bHasIntersection?block.iInterSectionHeight:0); 
+    		}, 0);
+    	var strBlocks = JSON.stringify(this.parent.tmpCoordinate.bmpBlockMapPara.m_BlockMap);
+    	
+    	var points = {x:[],y:[]};
+    	pad.points.forEach(function(p){
+    		points.x.push(Math.floor((p.ux-uLeft)/dResolutionX));
+    		points.y.push(Math.floor((p.uy-uBottom)/dResolutionY));
+    	});
+    	var strPoints = JSON.stringify(points);
+    	
+    	var self = this;
+    	framework.blockUI();
+    	this._rpc({model: 'padtool.pad',method: 'search_goa',args: [this.parent.glassName,imgWidth,imgHeight,strBlocks,strPoints],})
+        .then(function(res) {
+        	framework.unblockUI();
+        	if(res.result){
+        		self.dialog.$('.o_set_periodx_input').val(res.periodX);
+                self.dialog.$('.o_set_periody_input').val(res.periodY);
+                self.dialog.$('.img-responsive')[0].src = "data:image/jpeg;base64,"+res.map;
+                self.dialog.$('.img-responsive')[0].width = imgWidth;
+                self.dialog.$('.img-responsive')[0].height = imgHeight;
+                self.dialog.$('.img-responsive')[0].style="margin-top:10px;padding-top:10px;border-top: 1px solid #e5e5e5;"
+                self.parent.notification_manager.notify(_t('Operation Result'),_t('The search is success!'),false);
+        	}else{
+        		self.parent.notification_manager.warn(_t('Operation Result'),_t('The search failed!'),false);
+        	}
+        }).fail(function(){
+        	framework.unblockUI();
+        	self.parent.notification_manager.warn(_t('Operation Result'),_t('The search failed!'),false);
+        	});
+    },
+    
+    _onConfirmGOA:function(){
+    	var pad = this.map.curPad.panelpad;
+    	
+    	pad.periodX = parseFloat(this.$content.find('.o_set_periodx_input').val());
+    	pad.periodY = parseFloat(this.$content.find('.o_set_periody_input').val());
+    	pad.D1G1 = this.$content.find('.o_set_d1g1_input')[0].checked?1:0;
+    	
+    	var angle,period;
+    	var periodX = pad.periodX/this.parent.coordinate.mpMachinePara.aIPParaArray[0].aScanParaArray[0].dResolutionX;
+    	var periodY = pad.periodY/this.parent.coordinate.mpMachinePara.aIPParaArray[0].aScanParaArray[0].dResolutionY;
+		if(pad.periodY == 0){
+				angle = fabric.util.degreesToRadians(90);
+				period = periodX;
+			}else if(pad.periodX == 0){
+				angle = fabric.util.degreesToRadians(0);
+				period = periodY;
+			}else{
+				angle = Math.atan(periodX/periodY);
+				period = periodY / fabric.util.cos(angle);
+			}
+		angle = fabric.util.radiansToDegrees(angle);
+		
+		if(this.map.curPad.goa === undefined){
+			this.map.curPad.goa = new Mycanvas.Goa({
+				left:x,
+    			top:y,
+	    			pad:this.map.curPad,
+	    			period,
+				angle,
+				visible:true
+	    		}); 
+			this.map.add(this.map.curPad.goa);
+		}else{
+			var dirty = true;
+			var height = period * this.map.curPad.goa.number;
+			period = period / this.map.curPad.goa.scaleY;
+			if(period !== this.map.curPad.goa.period || angle !== this.map.curPad.goa.angle){
+				this.map.curPad.goa.set({angle,period,dirty,height});
+				this.map.curPad.goa.setCoords();
+			}
+		}
+		this.map.renderAll();
+    },
+    
     _onButtonAlign:function(x,y){
     	if(this.pad.curType != 'inspectZone')
     		return;
@@ -947,50 +1094,11 @@ var Hawkmap = Widget.extend({
             
         this.dialog = new Dialog(this, {
         	title: _t('Set Goa'),
-        	size: 'medium',
+        	//size: 'medium',
         	$content: $content,
-        	buttons: [{text: _t('Confirm'), classes: 'btn-primary', close: true, click: function () {
-                	pad.periodX = parseFloat(this.$content.find('.o_set_periodx_input').val());
-                	pad.periodY = parseFloat(this.$content.find('.o_set_periody_input').val());
-                	pad.D1G1 = this.$content.find('.o_set_d1g1_input')[0].checked?1:0;
-                	
-                	var angle,period;
-                	var periodX = pad.periodX/self.parent.coordinate.mpMachinePara.aIPParaArray[0].aScanParaArray[0].dResolutionX;
-                	var periodY = pad.periodY/self.parent.coordinate.mpMachinePara.aIPParaArray[0].aScanParaArray[0].dResolutionY;
-        			if(pad.periodY == 0){
-     					angle = fabric.util.degreesToRadians(90);
-     					period = periodX;
-     				}else if(pad.periodX == 0){
-     					angle = fabric.util.degreesToRadians(0);
-     					period = periodY;
-     				}else{
-     					angle = Math.atan(periodX/periodY);
-     					period = periodY / fabric.util.cos(angle);
-     				}
-        			angle = fabric.util.radiansToDegrees(angle);
-        			
-        			if(self.map.curPad.goa === undefined){
-            			self.map.curPad.goa = new Mycanvas.Goa({
-            				left:x,
-                			top:y,
-         	    			pad:self.map.curPad,
-         	    			period,
-        					angle,
-        					visible:true
-         	    		}); 
-         	        	self.map.add(self.map.curPad.goa);
-        			}else{
-        				var dirty = true;
-            			var height = period * self.map.curPad.goa.number;
-            			period = period / self.map.curPad.goa.scaleY;
-            			if(period !== self.map.curPad.goa.period || angle !== self.map.curPad.goa.angle){
-            				self.map.curPad.goa.set({angle,period,dirty,height});
-                			self.map.curPad.goa.setCoords();
-            			}
-        			}
-                	self.map.renderAll();
-                    
-                }}, {text: _t('Discard'), close: true}],
+        	buttons: [{text: _t('AutoSearch'), classes: 'btn-primary', close: false, click: this._onSearchGOA.bind(this)}, 
+        		{text: _t('Confirm'), classes: 'btn-primary', close: true, click: this._onConfirmGOA.bind(this)},
+        		{text: _t('Discard'), close: true}],
         });
         
         this.dialog.opened().then(function () {
@@ -1050,7 +1158,7 @@ var Hawkmap = Widget.extend({
 			if(this.pad.isMainMarkModified){
 				this.parent.notification_manager.notify(_t('Mark has been modified'),_t('Please save first!'),false);
 			}else{
-				if(this.parent.mainMarkImage){
+				if(this.parent.mainMarkImage && pad.panelpad.blocks){
 					this._showMark(this.parent.mainMarkImage,pad)
 				}
 			}
@@ -1058,7 +1166,7 @@ var Hawkmap = Widget.extend({
 			if(this.pad.isSubMarkModified){
 				this.parent.notification_manager.notify(_t('Mark has been modified'),_t('Please save first!'),false);
 			}else{
-				if(this.parent.subMarkImage){
+				if(this.parent.subMarkImage && pad.panelpad.blocks){
 					this._showMark(this.parent.subMarkImage,pad)
 				}
 			}

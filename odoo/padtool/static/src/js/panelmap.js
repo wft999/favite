@@ -5,6 +5,8 @@ var NotificationManager = require('web.notification').NotificationManager;
 var ControlPanelMixin = require('web.ControlPanelMixin');
 var core = require('web.core');
 var Dialog = require('web.Dialog');
+
+
 var Map = require('padtool.Map');
 var Mycanvas = require('padtool.Canvas');
 var Hawkmap = require('padtool.Hawkmap');
@@ -211,8 +213,8 @@ var Panelmap = Map.extend(ControlPanelMixin,{
     	this.$buttons.find('.fa-undo').toggleClass('o_hidden',hidden);
     	this.$buttons.find('.fa-repeat').toggleClass('o_hidden',hidden);
 
-    	hidden = this.pad.curType !== 'subMark'
-    	this.$buttons.find('.fa-refresh').toggleClass('o_hidden',hidden);
+    	//hidden = this.pad.curType !== 'mainMark' && this.pad.curType !== 'subMark' && this.pad.curType !== 'frame'
+    	//this.$buttons.find('.fa-refresh').toggleClass('o_hidden',hidden);
     },
     
     showObj:function(obj){
@@ -399,8 +401,37 @@ var Panelmap = Map.extend(ControlPanelMixin,{
     },
     
     _onButtonRefresh:function(){
-    	this._drawSubMark();
-    	this.notification_manager.notify(_t('Operation Result'),_t('SubMark has refreshed!'),false);
+    	if(this.pad.curType === 'subMark'){
+    		this._drawSubMark();
+        	this.notification_manager.notify(_t('Operation Result'),_t('SubMark has refreshed!'),false);
+    	}else if(this.pad.curType === 'frame'){
+    		this._drawRegion();
+        	this.notification_manager.notify(_t('Operation Result'),_t('Region has refreshed!'),false);
+    	}else{
+    		var self = this;
+    		var objs = _.filter(this.map.pads,function(pad){return pad.padType == self.pad.curType});
+        	if(objs.length == 0){
+        		return;
+        	}
+    		Dialog.confirm(this, (_t("Are you sure you want to remove all objects?")), {
+                confirm_callback: function () {
+                	self.register(objs,'delete');
+                	for(var i = 0; i< objs.length;i++){
+                		objs[i].clear();
+                		if(objs[i].padType == 'mainMark'){
+                			self.pad.isMainMarkModified = true;
+                		}
+                		objs[i].points = [];
+                	}
+                	
+                	self.pad.isModified = true;
+                	if(self.pad.isModified && self.hawkeye.visible)
+                		self.hawkmap.drawPad();
+                	self.notification_manager.notify(_t('Operation Result'),_t('Objects has refreshed!'),false);
+                },
+            });
+    	}
+    	
     },
     
     _renderButtons: function () {

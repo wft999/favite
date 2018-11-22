@@ -2,14 +2,17 @@ odoo.define('padtool.Canvas', function (require) {
 "use strict";
 
 var Class = require('web.Class');
-
+//fabric.perfLimitSizeTotal = 1024*1024*4;
+//fabric.maxCacheSideLimit = 10000;
 var Line = fabric.util.createClass(fabric.Line, {
     selectable: false,
     originX:"left",
 	originY:"top",
 	fill: 'yellow',
     stroke: 'yellow',
-    objectCaching:false,
+    objectCaching:true,
+    hasControls: false,
+	hasBorders:false,
     initialize: function(points,options) {
     	this.callSuper('initialize',points, options);
     	this.pad = options.pad || null;
@@ -165,7 +168,6 @@ var Goa = fabric.util.createClass(fabric.Object, {
 
 var Cross = fabric.util.createClass(fabric.Object, {
 	type:'cross',
-    objectCaching: true,
     fill:false,
 	hasControls: false,
 	borderColor: 'red',
@@ -176,7 +178,7 @@ var Cross = fabric.util.createClass(fabric.Object, {
 	//lockMovementY:true,
 	visible:false,
 	stroke:"yellow",
-	objectCaching:false,
+	objectCaching:true,
     initialize: function(options) {
     	this.callSuper('initialize', options);
     	this.pad = options.pad || null;
@@ -226,14 +228,20 @@ var Cross = fabric.util.createClass(fabric.Object, {
       
     mouseMove: function(){
     	if(this.inner){
-    		if((this.left>= this.inner[0].left && this.left<= this.inner[1].left) || (this.top>= this.inner[1].top && this.top<= this.inner[0].top)){
+    		if((this.left>= this.inner[0].left && this.left<= this.inner[1].left) || 
+    				(this.top>= this.inner[1].top && this.top<= this.inner[0].top) ||
+    				this.left < 10 || this.left > (this.canvas.width - 10)/this.canvas.getZoom() ||
+    				this.top < 10 || this.top > (this.canvas.height - 10)/this.canvas.getZoom()){
     			this.left = this.pad.points[this.id].x;
     			this.top = this.pad.points[this.id].y;
     			this.setCoords();
     			return false;
     		}
     	}else if(this.outer){
-    		if(this.left>= this.outer[1].left || this.left<= this.outer[0].left || this.top<= this.outer[1].top || this.top>= this.outer[0].top){
+    		if(this.left>= this.outer[1].left || 
+    				this.left<= this.outer[0].left || 
+    				this.top<= this.outer[1].top || 
+    				this.top>= this.outer[0].top){
     			this.left = this.pad.points[this.id].x;
     			this.top = this.pad.points[this.id].y;
     			this.setCoords();
@@ -249,7 +257,7 @@ var Hawkeye = fabric.util.createClass(fabric.Object, {
 	type:'hawkeye',
 	hasRotatingPoint:false,
 	transparentCorners: false,
-    objectCaching: false,
+    objectCaching: true,
 	//hasControls: false,
 	hasBorders:false,
 	visible:false,
@@ -574,6 +582,7 @@ var MyPolyline = Class.extend({
 });
 
 return {
+	Line,
 	Cross,
 	Hawkeye,
 	Rect,

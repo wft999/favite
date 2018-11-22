@@ -118,7 +118,7 @@ var MACHINE_PARA =  Class.extend({
     	var iLeftTemp;
     	var iBottomTemp;
     	
-    	iCameraNoPerRow = this.iTotalIP / this.iCameraRaw;
+    	iCameraNoPerRow = Math.floor(this.iTotalIP / this.iCameraRaw);
     	dLeft = 0;
     	dBottom = 0;
     	

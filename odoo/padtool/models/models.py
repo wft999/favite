@@ -10,7 +10,7 @@ import math
 from PIL import Image
 from io import BytesIO
 import base64
-
+from ctypes import *
 
 from odoo.exceptions import UserError, ValidationError
 
@@ -27,12 +27,35 @@ class Pad(models.Model):
     _name = 'padtool.pad'
     
     name = fields.Char(required=True)
-    glassName = fields.Char(required=True)
+    glassName = fields.Selection(selection='_get_glassName', string='GlassName',required=True)
+    #panelName = fields.Selection(selection='_get_panelName', string='PanelName')
+    #glassName = fields.Char(required=True)
     panelName = fields.Char(required=True)
     summary = fields.Text('Summary', translate=True)
     _sql_constraints = [
         ('name_uniq', 'unique (name)', "Pad name already exists !"),
     ]
+    
+    @api.model
+    def _get_glassName(self):
+        Menu = self.env['ir.ui.menu'].with_context({'ir.ui.menu.full_list': True})
+        menus = Menu.sudo().search([('parent_id', '=', self.env.ref('padtool.menu_glass_root').id),])
+        return [(m.name, m.name) for m in menus]
+    
+    @api.onchange('glassName')
+    def _onchange_glassName(self):
+        if self.glassName:
+            Menu = self.env['ir.ui.menu'].with_context({'ir.ui.menu.full_list': True})
+            menus = Menu.sudo().search([('parent_id.name', '=', self.glassName),])
+            self.panelName = menus[0].name
+            
+    @api.one
+    @api.constrains('glassName', 'panelName')
+    def _check_name(self):
+        Menu = self.env['ir.ui.menu'].with_context({'ir.ui.menu.full_list': True})
+        menus = Menu.sudo().search([('name','=',self.panelName),('parent_id.name', '=', self.glassName),])
+        if len(menus) < 1:
+            raise ValidationError("GlassName and PanelName must be match")
 
     GolbalToleranceRegularX = fields.Integer(string="ToleranceRegularX",default=10)
     GolbalToleranceRegularY = fields.Integer(string="ToleranceRegularY",default=10)
@@ -42,6 +65,9 @@ class Pad(models.Model):
     GolbalIndentRegularY = fields.Float(string = "IndentRegularY(um)",default=50)
     GolbalIndentUnregularX = fields.Float(string = "IndentUnregularX(um)",default=50)
     GolbalIndentUnregularY = fields.Float(string = "IndentUnregularX(um)",default=50)
+    
+    GolbalToleranceRegularDynamicX = fields.Float(string="ToleranceRegularDynamicX",default=0.15)
+    GolbalToleranceRegularDynamicY = fields.Float(string="ToleranceRegularDynamicY",default=0.15)
     
     GlassToGlassMode  = fields.Selection([(0, 'panel to panel'), (1, 'glass to glass'), (2, 'glass to golden'),], string='PadMode', default=0)
     NeglectInspIfNoMarkResult = fields.Integer(string="NeglectInspIfNoMarkResult",default=0)
@@ -70,12 +96,18 @@ class Pad(models.Model):
         if not re.match(PADNAME_PATTERN, vals['name']):
             raise ValidationError(_('Invalid pad name. Only alphanumerical characters, underscore, hyphen are allowed.'))
         
-        if ('glassName' not in vals) or ('panelName' not in vals):
+        if ('glassName' not in vals):
             menu_id = self.env.context['params']['menu_id']
             menu = self.env['ir.ui.menu'].browse(menu_id)
             parts=[c for c in menu.complete_name.split('/') if c]
             vals['glassName'] = parts[2]
             vals['panelName'] = parts[3]
+            
+        if ('panelName' not in vals):
+            Menu = self.env['ir.ui.menu'].with_context({'ir.ui.menu.full_list': True})
+            menus = Menu.sudo().search([('parent_id.name', '=', vals['glassName']),])
+            vals['panelName'] = menus[0].name
+            
         pad = super(Pad, self).create(vals)
         return pad
     
@@ -371,6 +403,10 @@ class Pad(models.Model):
             pad['GolbalIndentRegularX'],pad['GolbalIndentRegularY'] = (float(s) for s in par['GolbalIndentRegular'.lower()].split(','))
             pad['GolbalIndentUnregularX'],pad['GolbalIndentUnregularY'] = (float(s) for s in par['GolbalIndentUnregular'.lower()].split(','))
             
+            if ('GolbalToleranceRegularDynamic'.lower() in par):
+                pad['GolbalToleranceRegularDynamicX'],pad['GolbalToleranceRegularDynamicY'] = (float(s) for s in par['GolbalToleranceRegularDynamic'.lower()].split(','))
+            
+            
             pad['GlassToGlassMode'] = int(par['GlassToGlassMode'.lower()])
             pad['NeglectInspIfNoMarkResult'] = int(par['NeglectInspIfNoMarkResult'.lower()])
             pad['BMMode'] = int(par['BMMode'.lower()])
@@ -500,6 +536,64 @@ class Pad(models.Model):
             written = False
             message = str(e)
         return {'success': written,'message':message}
+    
+    @api.model
+    def search_goa(self,glass_name,width,height,strBlocks,strPoints):
+        root = odoo.tools.config['glass_root_path']
+        blocks = json.loads(strBlocks)
+        points = json.loads(strPoints)
+         
+        dest = Image.new('L', (width,height))   
+        left = 0
+        top = 0 
+        for x in range(len(blocks)):
+            for y in range(len(blocks[x])-1,-1,-1):
+                b = blocks[x][y]    
+                if b is None or b['bHasIntersection'] == False:
+                    continue;
+                
+                imgFile = '%s/%s/JpegFile/IP%d/AoiL_IP%d_scan%d_block%d.jpg' % (root,glass_name,b['iIPIndex']+1,b['iIPIndex'],b['iScanIndex'],b['iBlockIndex'])
+                with Image.open(imgFile) as im:
+                    im = im.transpose(Image.FLIP_TOP_BOTTOM)
+                    region = im.crop((b['iInterSectionStartX'] ,im.height-(b['iInterSectionStartY']+b['iInterSectionHeight']),b['iInterSectionStartX']+ b['iInterSectionWidth'], im.height-b['iInterSectionStartY']))
+                    dest.paste(region, (left,top))
+                    if y == 0:
+                        left += region.width
+                        top = 0
+                    else:
+                        top += region.height
+
+        pSrcStart = dest.tobytes()
+        step = 1
+        nVertices = len(points['x'])
+        aVerticesX = (c_int * nVertices)(*points['x'])
+        aVerticesY = (c_int * nVertices)(*points['y'])
+        periodX = c_double()
+        periodY = c_double()
+        periodType = c_int()
+        pMapStart = create_string_buffer(width*height*3)
+        nMapStep = 3
+        
+        res = windll.IPPDllTest.GetPeriod(pSrcStart,width,height,step,nVertices,aVerticesX,aVerticesY,byref(periodX),byref(periodY),byref(periodType),pMapStart,nMapStep)
+        if res == 1:
+            out = Image.frombytes('RGB', (width,height), pMapStart)
+            
+            with open('d:/goa.bmp', 'wb') as f:
+                out.save(f, format="BMP")
+            
+            b = BytesIO()
+            out.save(b, 'JPEG')
+        
+            return {
+                'result': True,
+                "periodX":periodX.value,
+                "periodY":periodY.value,
+                'map':base64.b64encode(b.getvalue())
+            }
+        else:
+            return {
+                'result': False
+            }
 
 class PublishDirectory(models.Model):
     _name = "padtool.directory"

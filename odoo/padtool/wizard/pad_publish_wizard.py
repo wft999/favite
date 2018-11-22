@@ -35,6 +35,7 @@ class PadPublishWizard(models.TransientModel):
         strParameter = 'PanelCenter = %f,%f\n' % (content['dPanelCenterX'],content['dPanelCenterY'])
         strParameter += 'GolbalToleranceRegular = %s,%s\n' % (pad['GolbalToleranceRegularX'],pad['GolbalToleranceRegularY'])
         strParameter += 'GolbalToleranceUnregular = %s,%s\n' % (pad['GolbalToleranceUnregularX'],pad['GolbalToleranceUnregularY'])
+        strParameter += 'GolbalToleranceRegularDynamic = %s,%s\n' % (pad['GolbalToleranceRegularDynamicX'],pad['GolbalToleranceRegularDynamicY'])
         strParameter += 'GolbalIndentRegular = %s,%s\n' % (pad['GolbalIndentRegularX'],pad['GolbalIndentRegularY'])
         strParameter += 'GolbalIndentUnregular = %s,%s\n' % (pad['GolbalIndentUnregularX'],pad['GolbalIndentUnregularY'])
         strParameter += 'GlassToGlassMode = %s\n' % int(pad['GlassToGlassMode'])
@@ -98,6 +99,11 @@ class PadPublishWizard(models.TransientModel):
                 strPad_Filter += '\n'        
                 Pad_Filter_Number += 1
             elif obj['padType'] == 'inspectZone' and len(obj['points'])>1:
+                if len(obj['points']) == 2:
+                    obj['points'].append(obj['points'][1])
+                    obj['points'].append({'ux':obj['points'][2]['ux'],'uy':obj['points'][0]['uy']})
+                    obj['points'][1]={'ux':obj['points'][0]['ux'],'uy':obj['points'][2]['uy']}
+                    
                 strPad_Inspect += 'Pad.Inspect'+str(Pad_Inspect_Number)+' = '
                 for p in obj['points']:
                     strPad_Inspect += str(p['ux']-content['dPanelCenterX'])+','+str(p['uy']-content['dPanelCenterY'])+';'

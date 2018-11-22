@@ -17,12 +17,22 @@
                 <div class="oe_clear"/>
                 <group>
                 	<group>
+                		<field name="glassName"/>
+                	</group>
+                	<group>
+                		<field name="panelName"/>
+                	</group>
+                </group>
+                <group>
+                	<group>
                 		<field name="GlassToGlassMode"/>
                 		<field name="display_name" invisible="1"/>
                         <field name="GolbalToleranceRegularX" />
                         <field name="GolbalToleranceRegularY" />
                     	<field name="GolbalToleranceUnregularX"/>
                     	<field name="GolbalToleranceUnregularY"/>
+                    	<field name="GolbalToleranceRegularDynamicX"/>
+                    	<field name="GolbalToleranceRegularDynamicY"/>
                 	</group>
                 	<group>
                 		<field name="BMMode" />

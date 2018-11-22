@@ -4,6 +4,8 @@ odoo.define('padtool.Glassmap', function (require) {
 var ControlPanelMixin = require('web.ControlPanelMixin');
 var core = require('web.core');
 var Widget = require('web.Widget');
+var framework = require('web.framework');
+
 var Coordinate = require('padtool.coordinate');
 var Mycanvas = require('padtool.Canvas');
 var QWeb = core.qweb;
@@ -35,8 +37,10 @@ var Glassmap = Widget.extend(ControlPanelMixin,{
         var self = this;
         return this._rpc({model: 'padtool.pad',method: 'glass_information',args: [this.menu_id],})
             .then(function(res) {
-            	_.extend(self,res);
-            	self.coordinate = new Coordinate(res.cameraConf,res.bifConf,res.padConf,res.panelName);
+            	if(res){
+            		_.extend(self,res);
+                	self.coordinate = new Coordinate(res.cameraConf,res.bifConf,res.padConf,res.panelName);
+            	}
             });
     },
 
@@ -44,6 +48,10 @@ var Glassmap = Widget.extend(ControlPanelMixin,{
     	var self = this;
     	this._super.apply(this, arguments);
     	
+    	if(this.glassName === undefined)
+    		return;
+    	
+    	framework.blockUI();
     	this.defImage = new $.Deferred();
     	this.image = new fabric.Image();
     	var src = '/glassdata/'+this.glassName +'/' + this.padConf.GLASS_INFORMATION.glass_map;
@@ -55,7 +63,7 @@ var Glassmap = Widget.extend(ControlPanelMixin,{
     		self.map  = new fabric.Canvas('map',{hoverCursor:'default',stopContextMenu:true});
     		self.map.pads = new Array();
     		var zoom = Math.max(self.map.getWidth()/img.width,self.map.getHeight()/img.height);
-    		zoom = Math.floor(zoom*10)/10;
+    		zoom = Math.floor(zoom*100)/100;
     		self.minZoom = zoom;
     		self.map.setZoom(zoom);
     		self.map.setDimensions({width:img.width*zoom,height:img.height*zoom});
@@ -73,15 +81,17 @@ var Glassmap = Widget.extend(ControlPanelMixin,{
     		self._updateControlPanel();
     		
     		self._loadPad();
+    		framework.unblockUI();
     	});
     },
     
     destroy: function(){	
-    	this.map.off('mouse:move');    		
-    	this.map.off('mouse:out');  
-    	this.map.off('mouse:up');
-    	this.map.off('mouse:down');
+    	
     	if(this.map){
+    		this.map.off('mouse:move');    		
+        	this.map.off('mouse:out');  
+        	this.map.off('mouse:up');
+        	this.map.off('mouse:down');
     		while(this.map.pads.length){
     			var pad = this.map.pads.pop()
     			pad.clear();

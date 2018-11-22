@@ -4,6 +4,8 @@ odoo.define('padtool.Map', function (require) {
 var core = require('web.core');
 var Widget = require('web.Widget');
 var SystrayMenu = require('web.SystrayMenu');
+var framework = require('web.framework');
+
 var Mycanvas = require('padtool.Canvas');
 var Hawkmap = require('padtool.Hawkmap');
 var QWeb = core.qweb;
@@ -40,11 +42,12 @@ var Map = Widget.extend({
     	if(this.panelName === undefined)
     		return;
     	
+    	framework.blockUI();
     	this.defImage = new $.Deferred();
     	this.image = new fabric.Image();
     	var src = '/glassdata/'+ this.glassName +'/'+ this.panelName +'/' + this.padConf[this.panelName].panel_map
     	this.image.setSrc(src, function(img){
-    		img.set({left: 0,top: 0,hasControls:false,lockMovementX:true,lockMovementY:true,selectable:false });
+    		img.set({left: 0,top: 0,hasControls:false,lockMovementX:true,lockMovementY:true,selectable:false});
     		self.map  = new fabric.Canvas('map',{
     			hoverCursor:'default',
     			stopContextMenu:false,
@@ -53,7 +56,7 @@ var Map = Widget.extend({
     		self.map.pads = new Array();
     		self.map.isPanel = true;
     		var zoom = Math.max(self.map.getWidth()/img.width,self.map.getHeight()/img.height);
-    		zoom = Math.floor(zoom*10)/10;
+    		zoom = Math.floor(zoom*100)/100;
     		self.minZoom = zoom;
     		self.map.setZoom(zoom);
     		self.map.setDimensions({width:img.width*zoom,height:img.height*zoom});
@@ -78,6 +81,7 @@ var Map = Widget.extend({
     		$('body').on('keydown', self.keydownHandler);
 
     		self.defImage.resolve();
+    		framework.unblockUI();
     		/*
     		$.contextMenu({
     	        selector: '.canvas-map', 
@@ -101,6 +105,7 @@ var Map = Widget.extend({
     	    });*/
     		
     	});
+    	
     	
     },
     
@@ -430,6 +435,7 @@ var Map = Widget.extend({
  		if(!hasRegion)
  			this._drawRegion();
  		
+ 		this._drawInspectZone();
 
  		this.innerFrame.crosses[0].bringToFront();
  		this.innerFrame.crosses[1].bringToFront();
@@ -481,7 +487,6 @@ var Map = Widget.extend({
  			uy = top;
  			let {dOutputX:x2, dOutputY:y2} = this.coordinate.UMCoordinateToPanelMapCoordinate(ux,uy);
  			obj.points.push({x:x2,y:this.image.height-y2,ux,uy});
- 			//this.pad.objs.push(obj);
  			obj.update();
  			
  			obj = new Mycanvas.MyPolyline(this.map,"region");
@@ -495,7 +500,6 @@ var Map = Widget.extend({
  			uy = top;
  			let {dOutputX:x4, dOutputY:y4} = this.coordinate.UMCoordinateToPanelMapCoordinate(ux,uy);
  			obj.points.push({x:x4,y:this.image.height-y4,ux,uy});
- 			//this.pad.objs.push(obj);
  			obj.update();
  			
  			top = nextTop;
@@ -516,7 +520,6 @@ var Map = Widget.extend({
 		y = innerFrame.points[0].y;
 		uy = innerFrame.points[0].uy;
 		obj.points.push({x,y,ux,uy});
-		//this.pad.objs.push(obj);
 		obj.update();
  		 
  		obj = new Mycanvas.MyPolyline(this.map,"region");
@@ -532,10 +535,9 @@ var Map = Widget.extend({
 		y = outerFrame.points[1].y;
 		uy = outerFrame.points[1].uy;
 		obj.points.push({x,y,ux,uy});
-		//this.pad.objs.push(obj);
 		obj.update();
  		 
-		
+		this.pad.isModified = true;
  	 },
  	 
  	 _getSubMark(){
@@ -654,6 +656,58 @@ var Map = Widget.extend({
  		}
  		
  		this.pad.isSubMarkModified = true;
+ 	},
+ 	
+ 	_drawInspectZone: function(){
+ 		var id = 1;
+ 		while(this.bifConf['auops.subpanel.subpanel_'+id+'.global_subpanel_data'] != undefined){
+ 			if(this.bifConf['auops.subpanel.subpanel_'+id+'.global_subpanel_data'] != this.panelName){
+ 				id++;
+ 				continue;
+ 			}
+ 				
+ 			var pos = this.bifConf['auops.subpanel.subpanel_'+id+'.position.top_left'].split(',');
+    		var left = parseFloat(pos[0]);
+    		var top = parseFloat(pos[1]);
+    		pos = this.bifConf['auops.subpanel.subpanel_'+id+'.position.bottom_right'].split(',');
+    		var right = parseFloat(pos[0]);
+    		var bottom = parseFloat(pos[1]);
+    		
+    		var x = (left + right)/2;
+    		var y = (top + bottom)/2;
+    		var panel_center_x = x * Math.cos(-this.glass_angle) + y * Math.sin(-this.glass_angle) + this.glass_center_x;
+    		var panel_center_y = -x * Math.sin(-this.glass_angle) + y * Math.cos(-this.glass_angle) + this.glass_center_y;
+    		
+    		var x1 = left * Math.cos(-this.glass_angle) + top * Math.sin(-this.glass_angle)  + this.glass_center_x;
+    		var y1 = -left * Math.sin(-this.glass_angle) + top * Math.cos(-this.glass_angle)  + this.glass_center_y;
+    		var x2 = right * Math.cos(-this.glass_angle) + bottom * Math.sin(-this.glass_angle)  + this.glass_center_x;
+    		var y2 = -right * Math.sin(-this.glass_angle) + bottom * Math.cos(-this.glass_angle) + this.glass_center_y;
+    		
+    		x1 = x1 - panel_center_x + parseFloat(this.padConf[this.panelName].panel_center_x);
+    		y1 = y1 - panel_center_y + parseFloat(this.padConf[this.panelName].panel_center_y);
+    		x2 = x2 - panel_center_x + parseFloat(this.padConf[this.panelName].panel_center_x);
+    		y2 = y2 - panel_center_y + parseFloat(this.padConf[this.panelName].panel_center_y);
+    		
+    		var out1 = this.coordinate.UMCoordinateToPanelMapCoordinate(x1,y1)
+    		var out2 = this.coordinate.UMCoordinateToPanelMapCoordinate(x2,y2)
+
+    		x1 = out1.dOutputX;
+    		y1 = this.image.height - out1.dOutputY;
+    		x2 = out2.dOutputX;
+    		y2 = this.image.height - out2.dOutputY;
+    		var line1 = new Mycanvas.Line([x1,y1,x1,y2],{stroke: 'blue',pad:null});
+	 		var line2 = new Mycanvas.Line([x1,y1,x2,y1],{stroke: 'blue',pad:null});
+	 		var line3 = new Mycanvas.Line([x2,y2,x2,y1],{stroke: 'blue',pad:null});
+	 		var line4 = new Mycanvas.Line([x2,y2,x1,y2],{stroke: 'blue',pad:null});
+	 		this.map.add(line1,line2,line3,line4);
+	 		
+	 		this.inspectZoneX1 = x1;
+	 		this.inspectZoneY1 = y1;
+	 		this.inspectZoneX2 = x2;
+	 		this.inspectZoneY2 = y2;
+	 		
+    		break;
+ 		}
  	},
  	
  	updateForSelect:function(){
